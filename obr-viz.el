@@ -221,7 +221,7 @@
     (eaf-setq nodes node-string)
     (eaf-setq links link-string)
 
-    (eaf-send-var-to-python)
+    (eaf--send-var-to-python)
 
     )
     
@@ -240,13 +240,13 @@
     
     (eaf-setq update_check 1)
     (setq update_check_elisp 1)
-    (eaf-send-var-to-python)
+    (eaf--send-var-to-python)
 
     (while (eq update_check_elisp 1)
 	(sit-for 0.01)
 	)
     (eaf-setq update_check 0)
-    (eaf-send-var-to-python)
+    (eaf--send-var-to-python)
     (setq update_check_elisp 0)
     )
 
@@ -257,7 +257,7 @@
   (setq update_check_elisp 0)
 
   (eaf-open "eaf-obr-test" "obr-test")
-  (eaf-send-var-to-python)
+  (eaf--send-var-to-python)
   )
 
 (define-key org-brain-visualize-mode-map "G" 'obr-viz)
