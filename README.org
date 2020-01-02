@@ -30,5 +30,5 @@
 
 ** Example: Twin Peaks character relations based on some episodes of S1
 
-[[file:demo/obr2.gif][test]]
+[[file:demo/obr2.gif]]
 
