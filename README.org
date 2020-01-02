@@ -4,7 +4,7 @@
 
 ** Requirements
 - [[https://github.com/Kungsgeten/org-brain][org-brain]]
-- [[https://github.com/manateelazycat/emacs-application-framework/][EAF]]: (some programs in EAF don't run for me, but that doesn't seem to be a problem)
+- [[https://github.com/manateelazycat/emacs-application-framework/][EAF]] (some programs in EAF don't run for me, but that doesn't seem to be a problem)
 - [[https://graph-tool.skewed.de][graph-tool]] (unlike graphviz, it allows to start layout calculations from predefined coordinates, which results in relatively little node re-arrangement)
 - some other python libs
 
@@ -25,9 +25,9 @@
 ** Particularities/Limitations:
 - edges of children of pins are visualized as well
 - parent-child relationships are visualized unless the parent starts with "cls_" (class)
-- currently only annotated edges are visualized; this allows to use directed edges by default
-- updates have to be manually triggered (I haven't figured out hooks yet)
-- selection through pins seems a bit wonky, may be switched to categories/query language
+- only annotated edges are visualized; this allows to use directed edges by default
+- updates to the visualization have to be manually triggered
+- selection through pins seems a bit wonky, may be switched to categories/query language/something else
 - if the network does not constitute a component, the individual components are pushed strongly apart by the layout algorithm
 
 *Disclaimer*: This is the first time I'm trying to develop something like an application, as well as using Elisp and GUIs.
