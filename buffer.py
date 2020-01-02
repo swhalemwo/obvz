@@ -248,7 +248,6 @@ class ob_viz(QWidget):
         qp = QPainter(self)
         edges = [(self.qt_coords[i[0]], self.qt_coords[i[1]]) for i in self.adj]
         # dumper([str(i) for i in edges])
-        # dumper(['lol'])
 
         qp.setPen(QPen(Qt.green, 2, Qt.SolidLine))
 

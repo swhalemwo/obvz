@@ -1,10 +1,10 @@
-* visualize org-brain relationships using Emacs Application Framework
+* visualize org-brain relationships using EAF
 
 
 ** Requirements
 - org-brain
 - EAF/PyQt (some programs in EAF don't run for me, but that doesn't seem to be a problem)
-- graph-tool (maybe slightly overkill for only a handful of edges, but it allows to start layout calculations from predefined coordinates, which means that changes in nodes selected will result in relatively little node re-arrangement)
+- graph-tool (unlike graphviz, it allows to start layout calculations from predefined coordinates, which results in relatively little node re-arrangement)
 - some other python libs
 
 ** Installation:
@@ -12,17 +12,17 @@
 - load the obr-viz.el functions (it's not really a package yet)
 
 ** Usage:
-- in emacs, run M-x eaf-obr-test to start the python process
 - in org-brain, pin/unpin nodes whose links are of interest
-  - the links of children of pins are rendered as well,
-  - the hierarchical relationships are rendered unless the parent starts with "cls_" (class)
-- update the links obr-viz (bound to G) and generate a new layout with obr-viz-redraw (bound to R)
+- run (=M-x eaf-obr-test=) to start the python process (*does something have to be selected?*)
+  - edges of children of pins are rendered as well,
+  - hierarchical relationships are rendered the parent starts with "cls_" (class)
+- update the links obr-viz (bound to (=G=)) and generate a new layout with obr-viz-redraw (bound to (=R=))
 
 
 ** Limitations/Particularities:
-- currently only annotated edges are used as this allows me to make the edges directed, which I prefer
+- currently only annotated edges are visualized; this allows to use directed edges by default
 - updates have to be manually triggered (I haven't figured out hooks yet)
-- selection through pins seems a bit wonky, may be switched to categories
+- selection through pins seems a bit wonky, may be switched to categories/query language
 - if the network does not constitute a component, the individual components are pushed strongly apart by the layout algorithm
 
 *Disclaimer*: This is the first time I'm trying to develop something like an application, as well as using Elisp and GUIs; this should be visible in the code quality.
