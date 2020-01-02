@@ -1,31 +1,36 @@
-* visualize org-brain relationships using EAF
+* visualizing org-brain relationships using EAF
+
 
 
 ** Requirements
-- org-brain
-- EAF/PyQt (some programs in EAF don't run for me, but that doesn't seem to be a problem)
-- graph-tool (unlike graphviz, it allows to start layout calculations from predefined coordinates, which results in relatively little node re-arrangement)
+- [[https://github.com/Kungsgeten/org-brain][org-brain]]
+- [[https://github.com/manateelazycat/emacs-application-framework/][EAF]]: (some programs in EAF don't run for me, but that doesn't seem to be a problem)
+- [[https://graph-tool.skewed.de][graph-tool]] (unlike graphviz, it allows to start layout calculations from predefined coordinates, which results in relatively little node re-arrangement)
 - some other python libs
 
+
 ** Installation:
-- create folder emacs-application-framework/app/obr-viz, copy/symlink buffer.py there
-- load the obr-viz.el functions (it's not really a package yet)
+- create folder emacs-application-framework/app/obr-test, copy/symlink (=buffer.py=) there
+- load the (=obr-viz.el=) functions/variables (it's not really a package yet)
 
 ** Usage:
 - in org-brain, pin/unpin nodes whose links are of interest
-- run (=M-x eaf-obr-test=) to start the python process (*does something have to be selected?*)
-  - edges of children of pins are rendered as well,
-  - hierarchical relationships are rendered the parent starts with "cls_" (class)
-- update the links obr-viz (bound to (=G=)) and generate a new layout with obr-viz-redraw (bound to (=R=))
+- run obr-viz (bound to =G=) to load the links into =eaf-var-list=
+  (visualization does not work if =eaf-var-list= has no links)
+- run =M-x eaf-obr-test= to start the python process that visualizes the links in a EAF window thingy
+- when updating the links by pinning/unpinning or adding/removing children/friends, update the visualization with obr-viz (=G=)
+- generate a new layout with obr-viz-redraw (=R=)
 
 
-** Limitations/Particularities:
+** Particularities/Limitations:
+- edges of children of pins are visualized as well
+- parent-child relationships are visualized unless the parent starts with "cls_" (class)
 - currently only annotated edges are visualized; this allows to use directed edges by default
 - updates have to be manually triggered (I haven't figured out hooks yet)
 - selection through pins seems a bit wonky, may be switched to categories/query language
 - if the network does not constitute a component, the individual components are pushed strongly apart by the layout algorithm
 
-*Disclaimer*: This is the first time I'm trying to develop something like an application, as well as using Elisp and GUIs; this should be visible in the code quality.
+*Disclaimer*: This is the first time I'm trying to develop something like an application, as well as using Elisp and GUIs.
 
 
 ** Example: Twin Peaks character relations based on some episodes of S1

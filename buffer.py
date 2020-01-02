@@ -6,7 +6,7 @@ from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont
 import sys
 import signal
 
-import inspect
+# import inspect
 import csv
 
 # from graph_tool.all import *
@@ -377,9 +377,6 @@ class AppBuffer(Buffer):
         #             "----------------"
         #             ])
             
-
-
-        
         # dumper([str(self.emacs_var_dict)])
         
         # dumper([c])
@@ -398,7 +395,6 @@ class AppBuffer(Buffer):
         #              ['possible_ares', 'music'],
         #              ['possible_ares', 'chess']]
         
-
         # self.adj = np.array([(int(i.source()), int(i.target())) for i in self.g.edges()])
         # self.pos_vp = sfdp_layout(self.g, K=K, max_iter=1)
 
