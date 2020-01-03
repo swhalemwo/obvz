@@ -27,13 +27,21 @@
 	    (push children children-nodes)
 	    
 	    ;; loop over children to set specific links
-	    (while children
-		(setq child (car children))
-		(setq link (concat node-upper-level " -- " child " -- isa"))
-		(push link all-links)
+	    ;; (while children
+	    ;; 	(setq child (car children))
+	    ;; 	(setq link (concat node-upper-level " -- " child " -- isa"))
+	    ;; 	(push link all-links)
 
-		(setq children (cdr children))
-		)
+	    ;; 	(setq children (cdr children))
+	    ;; 	)
+	    (setq linkss (mapcar (lambda (child)
+			(funcall #'obvis-create-children-links node-upper-level child))
+				 children))
+	    (push linkss all-links)
+	    
+	    
+
+	    
 	    ;; (setq children-nodes (flatten-list children))
 	    (setq nodes-upper-level (cdr nodes-upper-level))
 	    )
@@ -45,6 +53,7 @@
 	(setq depth (- depth 1))
     
 	)
+    (setq all-links (flatten-list all-links))
     (setq all-nodes (flatten-list all-nodes))
 
     (setq returns ())
@@ -53,6 +62,7 @@
     
     returns
     )
+
 
 (defun obvis-create-children-links (parent child)
     (concat parent " -- " child " -- isa"))
@@ -64,17 +74,20 @@
 ;; (defvar packages '(("auto-complete" . "auto-complete")
 ;;                    ("defunkt" . "markdown-mode")))
 
+;; (setq node "cls-ppl")
+
 ;; (defvar packages2 '("auto-complete" "markdown-mode"))
 
 
-(defun toy-fnx (author name)
-    "Just testing."
-    (message "Package %s by author %s" name author)
-    ;; (print
-    (concat "Package " name " by author " author)
-    ;; )
-    ;; (sit-for 1)
-    )
+;; (defun toy-fnx (author name)
+;;     "Just testing."
+;;     (message "Package %s by author %s" name author)
+;;     ;; (print
+;;     (concat "Package " name " by author " author)
+;;     ;; )
+;;     ;; (sit-for 1)
+;;     )
+
 
 ;; (mapcar (lambda (package)
 ;;           (funcall #'toy-fnx (car package) (cdr package)))
@@ -89,6 +102,12 @@
 ;; (mapcar (lambda (package)
 ;;           (funcall #'toy-fnx "some_guy" package))
 ;;         packages2)
+
+;; (setq children (org-brain-children "cls_ppl"))
+
+;; (mapcar (lambda (child)
+;; 	    (funcall #'obvis-create-children-links node-upper-level child))
+;; 	children)
 
 
 
