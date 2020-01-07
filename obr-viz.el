@@ -1,71 +1,144 @@
 (require 'cl)
 
-(defun children-specific-depth (node depth)
-    """get nodes that are there"""
-    ;; would be nice to also already get links: hierarchical links are here
-    (setq nodes-upper-level ())
-    (push node nodes-upper-level)
+;; (defun children-specific-depth (node depth)
+;;     """get nodes that are there"""
+;;     ;; would be nice to also already get links: hierarchical links are here
+;;     (setq nodes-upper-level ())
+;;     (push node nodes-upper-level)
 
-    (setq all-nodes ())
-    (push node all-nodes)
+;;     (setq all-nodes ())
+;;     (push node all-nodes)
     
-    (setq all-links ())
+;;     (setq all-links ())
     
-    ;; loop over levels
-    (while (> depth 0)
-	;; (print depth)
+;;     ;; loop over levels
+;;     (while (> depth 0)
+;; 	;; (print depth)
 
-	(setq children-nodes ())
-	;; loop over nodes at level
-	(while nodes-upper-level
-	    (setq node-upper-level (car nodes-upper-level))
-	    (setq children (org-brain-children node-upper-level))
+;; 	(setq children-nodes ())
+;; 	;; loop over nodes at level
+;; 	(while nodes-upper-level
+;; 	    (setq node-upper-level (car nodes-upper-level))
+;; 	    (setq children (org-brain-children node-upper-level))
 
-	    ;; (print node-upper-level)
-	    ;; (print children)
-	    (push children all-nodes)
-	    (push children children-nodes)
+;; 	    ;; (print node-upper-level)
+;; 	    ;; (print children)
+;; 	    (push children all-nodes)
+;; 	    (push children children-nodes)
 	    
-	    ;; loop over children to set specific links
-	    ;; (while children
-	    ;; 	(setq child (car children))
-	    ;; 	(setq link (concat node-upper-level " -- " child " -- isa"))
-	    ;; 	(push link all-links)
-
-	    ;; 	(setq children (cdr children))
-	    ;; 	)
-	    (setq linkss (mapcar (lambda (child)
-			(funcall #'obvis-create-children-links node-upper-level child))
-				 children))
-	    (push linkss all-links)
+;; 	    (setq linkss (mapcar (lambda (child)
+;; 			(funcall #'obvis-create-children-links node-upper-level child))
+;; 				 children))
+;; 	    (push linkss all-links)
 	    
-	    
-
-	    
-	    ;; (setq children-nodes (flatten-list children))
-	    (setq nodes-upper-level (cdr nodes-upper-level))
-	    )
+;; 	    ;; (setq children-nodes (flatten-list children))
+;; 	    (setq nodes-upper-level (cdr nodes-upper-level))
+;; 	    )
 	
-	;; (print "setting next level")
-	;; (print children-nodes)
-	(setq nodes-upper-level (flatten-list children-nodes))
+;; 	;; (print "setting next level")
+;; 	;; (print children-nodes)
+;; 	(setq nodes-upper-level (flatten-list children-nodes))
     
-	(setq depth (- depth 1))
+;; 	(setq depth (- depth 1))
     
-	)
-    (setq all-links (flatten-list all-links))
-    (setq all-nodes (flatten-list all-nodes))
+;; 	)
+;;     (setq all-links (flatten-list all-links))
+;;     (setq all-nodes (flatten-list all-nodes))
 
-    (setq returns ())
-    (push all-links returns)
-    (push all-nodes returns)
+;;     (setq returns ())
+;;     (push all-links returns)
+;;     (push all-nodes returns)
     
-    returns
-    )
+;;     returns
+;;     )
 
 
 (defun obvis-create-children-links (parent child)
+    """basic hierarchical function"""
     (concat parent " -- " child " -- isa"))
+
+
+(defun loop-over-upper-level-nodes (parent)
+    """get nodes and hierarchical links of parent node"""
+    ;; needs both nodes and links for some tests later iirc
+    (let ((childrenx (org-brain-children parent))
+	  (res ()
+	       ))
+	(push childrenx res)
+	
+	(push (mapcar (lambda (child)
+			  (funcall #'obvis-create-children-links parent child))
+		      childrenx) res)
+	;; can also push to nodes/links to function-scoped let variables
+	res
+	))
+
+
+
+(defun children-specific-depth-let (node depth)
+    (let ((nodes-upper-level (list node))
+	  (all-nodes (list node))
+	  (all-links ())
+	  (temp-res ())
+	  (all-res ())
+	  )
+
+	;; for each depth step
+	(dotimes (i depth)
+
+	    ;; temp-res: contains 2 lists (nodes/links) for each upper-level-node
+	    ;; idk it's a bit ugly
+	    ;; but idk how to work without temp-res
+	    (push (mapcar 'loop-over-upper-level-nodes nodes-upper-level) temp-res)
+
+
+	    ;; push nodes/links to local vars
+	    (mapc (lambda (nodex) (push nodex all-nodes)) (flatten-list (mapcar 'cdr (car temp-res))))
+	    (mapc (lambda (linkx) (push linkx all-links)) (flatten-list (mapcar 'car (car temp-res))))
+	    
+	    (setq nodes-upper-level (flatten-list (mapcar 'cdr (car temp-res))))
+	    (setq temp-res ())
+
+	    )
+	(push all-links all-res)
+	(push all-nodes all-res)
+
+	all-res
+	 
+	)
+    )
+
+	
+;; (setq res-list ())
+;; (mapc (lambda (child) (push child res-list)) '(a b c d))
+
+
+;; return object  of let block has to be last argument in it (not outside of it)
+
+	
+
+;; have to get childrenx as input to  mapcar func
+    
+;; (mapcar loop-over-upper-level-nodes nodes-upper-level)
+
+;; block to put into function and then mapcar over
+;; (while nodes-upper-level
+;;     (setq node-upper-level (car nodes-upper-level))
+;;     (setq children (org-brain-children node-upper-level))
+
+;;     ;; (print node-upper-level)
+;;     ;; (print children)
+;;     (push children all-nodes)
+;;     (push children children-nodes)
+    
+;;     (setq linkss (mapcar (lambda (child)
+;; 			     (funcall #'obvis-create-children-links node-upper-level child))
+;; 			 children))
+;;     (push linkss all-links)
+    
+;;     ;; (setq children-nodes (flatten-list children))
+;;     (setq nodes-upper-level (cdr nodes-upper-level))
+;;     )
 
 
 ;; (mapcar 'obvis-create-children-links children)
@@ -95,19 +168,11 @@
 
 
 ;; (mapcar (lambda (package)
-;;           (funcall #'toy-fnx "some_guy" (car package)))
-;;         packages2)
-
-
-;; (mapcar (lambda (package)
 ;;           (funcall #'toy-fnx "some_guy" package))
 ;;         packages2)
 
 ;; (setq children (org-brain-children "cls_ppl"))
 
-;; (mapcar (lambda (child)
-;; 	    (funcall #'obvis-create-children-links node-upper-level child))
-;; 	children)
 
 
 
@@ -203,11 +268,11 @@
 	;; of classes, don' get children relationships
 	(if (equal (substring rel-node 0 4) "cls_")
 		(progn
-		    (setq node-res (children-specific-depth rel-node 8))
+		    (setq node-res (children-specific-depth-let rel-node 8))
 		    (push (car node-res) total-nodes)
 		    )
 	    (progn
-		(setq node-res (children-specific-depth rel-node 8))
+		(setq node-res (children-specific-depth-let rel-node 8))
 		(push (car node-res) total-nodes)
 		(push (cdr node-res) total-links)
 		)
