@@ -245,6 +245,10 @@ class FruchtTest():
                     y =  min(self.L,max(0,y)) - self.L/2
                     self.g.nodes[v]['x'] = min(math.sqrt(self.W*self.W/4-x*x),max(-math.sqrt(self.W*self.W/4-x*x),x)) + self.W/2
                     self.g.nodes[v]['y'] = min(math.sqrt(self.L*self.L/4-y*y),max(-math.sqrt(self.L*self.L/4-y*y),y)) + self.L/2
+                    # not clear what's happening here
+                    # but it sure looks inefficient
+                    # maybe make repulsive force at border? 
+
 
             # cooling
             self.t -= self.dt
@@ -332,6 +336,17 @@ plt.show()
 # - plt: qt faster, hopefully
 # - python: summarize to matrices
 
+
+# should i maybe change to qt anyways already? 
+# gonna be easier to implement in the end, not using any stupid plt shit in the end anyways
+
+
+# ahh but i don't want to spend another day with technical implementations
+# i mean qt stuff shouldn't be taking that long
+
+# idea to use plt was kinda to be able to debug
+# but that's more the iterative/custom frucht layout algorithm
+# 
 
 # * scrap
 # ** multi-line test

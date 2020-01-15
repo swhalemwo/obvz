@@ -377,6 +377,7 @@ class AppBuffer(Buffer):
         #             "----------------"
         #             ])
             
+
         # dumper([str(self.emacs_var_dict)])
         
         # dumper([c])
