@@ -28,7 +28,7 @@ class QtTest(QWidget):
         self.height = 800
         self.InitWindow()
         self.g = g
-        self.W = self.L = 1200
+        self.W = self.L = 800
         self.area = self.W*self.L
 
         self.t = self.W/60
@@ -248,8 +248,36 @@ class QtTest(QWidget):
                 self.g.nodes[v]['dy'] += -ddy
                 self.g.nodes[u]['dy'] += +ddy
 
+        # add repellant edges
+        # what's a good function hmm
+        # (negative) exponential? 
+        # or could just use the repellant force
+        # then it's the same as any other node
+
+        for v in self.g.nodes():
+            dist_from_left = self.g.nodes[v]['x'] - (self.g.nodes[v]['width']/2)
+            d = self.f_r(dist_from_left, self.k)/dist_from_left
+            # force is always positive on x-axis (ideally at least)
+            self.g.nodes[v]['dx'] += d
+            
+            dist_from_right = self.W - (self.g.nodes[v]['x'] + (self.g.nodes[v]['width']/2))
+            d = self.f_r(dist_from_right, self.k)/dist_from_right
+            self.g.nodes[v]['dx'] -= d
+            
+            dist_from_top = self.g.nodes[v]['y'] - (self.g.nodes[v]['height']/2)
+            d = self.f_r(dist_from_top, self.k)/dist_from_top
+            # force is always positive on x-axis (ideally at least)
+            self.g.nodes[v]['dy'] += d
+            
+            dist_from_bottom = self.L - (self.g.nodes[v]['y'] + (self.g.nodes[v]['height']/2))
+            d = self.f_r(dist_from_bottom, self.k)/dist_from_bottom
+            self.g.nodes[v]['dy'] -= d
+
+            
+
         # limit the maximum displacement to the temperature t
         # and then prevent from being displace outside frame
+        
         for v in self.g.nodes():
             dx = self.g.nodes[v]['dx']
             dy = self.g.nodes[v]['dy']
@@ -259,10 +287,14 @@ class QtTest(QWidget):
                 d = min(disp,self.t)/disp
                 x = self.g.nodes[v]['x'] + dx*d
                 y = self.g.nodes[v]['y'] + dy*d
-                x =  min(self.W,max(0,x)) - self.W/2
-                y =  min(self.L,max(0,y)) - self.L/2
-                self.g.nodes[v]['x'] = min(math.sqrt(self.W*self.W/4-x*x),max(-math.sqrt(self.W*self.W/4-x*x),x)) + self.W/2
-                self.g.nodes[v]['y'] = min(math.sqrt(self.L*self.L/4-y*y),max(-math.sqrt(self.L*self.L/4-y*y),y)) + self.L/2
+                
+                self.g.nodes[v]['x'] = x
+                self.g.nodes[v]['y'] = y
+                
+                # x =  min(self.W,max(0,x)) - self.W/2
+                # y =  min(self.L,max(0,y)) - self.L/2
+                # self.g.nodes[v]['x'] = min(math.sqrt(self.W*self.W/4-x*x),max(-math.sqrt(self.W*self.W/4-x*x),x)) + self.W/2
+                # self.g.nodes[v]['y'] = min(math.sqrt(self.L*self.L/4-y*y),max(-math.sqrt(self.L*self.L/4-y*y),y)) + self.L/2
                 # not clear what's happening here
                 # but it sure looks inefficient
                 # maybe make repulsive force at border? 
@@ -371,7 +403,7 @@ class QtTest(QWidget):
 
 if __name__ == "__main__":
     while True:
-        g = nx.random_geometric_graph(8, 0.25)
+        g = nx.random_geometric_graph(15, 0.2)
         if nx.number_connected_components(g) == 1:
             break
 
@@ -379,8 +411,8 @@ if __name__ == "__main__":
         g.nodes[v]['x'] = choices(range(100, 700))[0]
         g.nodes[v]['y'] = choices(range(100, 700))[0]
 
-        g.nodes[v]['width'] = choices(range(50,200))[0]
-        g.nodes[v]['height'] = choices(range(50,200))[0]
+        g.nodes[v]['width'] = choices(range(50,100))[0]
+        g.nodes[v]['height'] = choices(range(50,100))[0]
     
     App = QApplication(sys.argv)
     w = QtTest(g)
@@ -398,3 +430,21 @@ if __name__ == "__main__":
 
 
 # w.sq_dist2(4,0)
+
+# hm what to do next
+# optimize python function? 
+# tbh it's good enough for not that many boxes
+
+# emacs-python connection? 
+
+# text -> node size? 
+
+# maybe border layout, because not clear what the code does there
+# boundary could be repellant? 
+# something like window? for zoom 
+# maybe see how nx is doing it
+# doesn't really i think
+# it just is all scaled afterwards
+# but wouldn't really work with boxes being specific sizes (would change in size if overall layout changes)
+
+
