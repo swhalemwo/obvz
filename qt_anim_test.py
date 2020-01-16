@@ -233,10 +233,10 @@ class QtTest(QWidget):
 
         # calculate attractive forces
         for v,u in self.g.edges():
-            # dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
-            # dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
+            dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
+            dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
             
-            dx, dy = self.sq_dist2(v, u)
+            # dx, dy = self.sq_dist2(v, u)
             
             delta = math.sqrt(dx*dx+dy*dy)
             if delta != 0:
@@ -403,7 +403,7 @@ class QtTest(QWidget):
 
 if __name__ == "__main__":
     while True:
-        g = nx.random_geometric_graph(15, 0.2)
+        g = nx.random_geometric_graph(20, 0.2)
         if nx.number_connected_components(g) == 1:
             break
 
@@ -411,8 +411,8 @@ if __name__ == "__main__":
         g.nodes[v]['x'] = choices(range(100, 700))[0]
         g.nodes[v]['y'] = choices(range(100, 700))[0]
 
-        g.nodes[v]['width'] = choices(range(50,100))[0]
-        g.nodes[v]['height'] = choices(range(50,100))[0]
+        g.nodes[v]['width'] = choices(range(10,75))[0]
+        g.nodes[v]['height'] = choices(range(10,75))[0]
     
     App = QApplication(sys.argv)
     w = QtTest(g)
@@ -436,8 +436,18 @@ if __name__ == "__main__":
 # tbh it's good enough for not that many boxes
 
 # emacs-python connection? 
+# yup
+
 
 # text -> node size? 
+
+# optimization: maybe the boost stuff, some time
+# question is if c++ has arrays/matrices (doesn't sound like that based on the description at https://valelab4.ucsf.edu/svn/3rdpartypublic/boost/libs/graph/example/fr_layout.cpp)
+# if not, might be easier to adapt current steps to c++ code rather than to rewrite it in python to arrays
+# there are arrays, but seems like all matrix operations still have to be broken down to individual elements in for loops?  
+
+
+# done                            
 
 # maybe border layout, because not clear what the code does there
 # boundary could be repellant? 
