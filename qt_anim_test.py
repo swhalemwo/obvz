@@ -1,6 +1,9 @@
 from PyQt5.QtWidgets import QPushButton, QApplication, QWidget
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont
+from sklearn.metrics.pairwise import euclidean_distances
+
+from time import sleep
 
 import sys
 import signal
@@ -19,8 +22,8 @@ class QtTest(QWidget):
     def __init__(self, g):
         super().__init__()
         self.title = "PyQt5 Drawing Tutorial"
-        self.top= 150
-        self.left= 150
+        self.top= 0
+        self.left= 0
         self.width = 800
         self.height = 800
         self.InitWindow()
@@ -31,7 +34,11 @@ class QtTest(QWidget):
         self.t = self.W/60
         self.dt = self.t/(200)
         self.area = self.W*self.L
+
+        self.main_v = ""
+        self.cmpr_v = ""
         # k is something with strength of repulsive force
+        
         self.k = math.sqrt((self.area)/nx.number_of_nodes(g))/4
         print('k: ', self.k)
         self.timer = QTimer(self, timeout=self.update_demo, interval=40)
@@ -45,10 +52,155 @@ class QtTest(QWidget):
     def f_r(self, d,k):
         return k*k/d
 
+    def sq_dist(self, sq1, sq2):
+        """distance between two squares"""
+        # sq1 = np.array([1,1])
+        # sq2 = np.array([5,4])
+
+        sq1_tpl = np.array([self.g.nodes[sq1]['x'], self.g.nodes[sq1]['y']])
+        sq2_tpl = np.array([self.g.nodes[sq2]['x'], self.g.nodes[sq2]['y']])
+
+        # just one vector/angle needed due to symmetry: hyps same if 180 deg turned
+        vec= sq2_tpl-sq1_tpl
+        angle = math.degrees(math.atan2(vec[0], vec[1]))
+
+        hyp1 = self.sq_hyp(sq1_tpl, angle, self.g.nodes[sq1]['height']/2)
+        hyp2 = self.sq_hyp(sq2_tpl, angle, self.g.nodes[sq1]['height']/2)
+
+        dist_ctrs = np.sqrt(vec[0]**2 + vec[1]**2)
+        dist_ttl = dist_ctrs- hyp1 - hyp2
+        dist_ttl_crct = np.clip(dist_ttl, 0, None)
+        return(dist_ttl_crct)
+
+
+    def sq_hyp(self, sq, angle, adj):
+        """gets the hypotenuse of the triangle (distance to border)"""
+        # needs to be generalized to rectangle
+        angle = angle % 90
+
+        # adj = 1
+
+        hyp = adj/math.cos(math.radians(angle))
+        return(hyp)
+    
+    # idk maybe easier to use actual shortest distances (not through centers)
+    # more straightforward
+    # covers all rectangles
+
+
     def InitWindow(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.top, self.left, self.width, self.height)
         self.show()
+
+    def dim_ovlp(self, rng1, rng2):
+        
+        # rng1_set = set(np.range(rng1[0], rng1[1], 0.1), 2))
+        # rng2_set = set(np.range(rng2[0], rng2[1], 0.1), 2))
+        
+        rng1_set = set(range(int(np.floor(rng1[0])), int(np.ceil(rng1[1]))))
+        rng2_set = set(range(int(np.floor(rng2[0])), int(np.ceil(rng2[1]))))
+
+        intsection = rng1_set.intersection(rng2_set)
+        return(intsection)
+
+    def rect_points(self,r):
+        p1 = [r[0] + (r[2]/2), r[1] + (r[3]/2)]
+        p2 = [r[0] + (r[2]/2), r[1] - (r[3]/2)]
+        p3 = [r[0] - (r[2]/2), r[1] + (r[3]/2)]
+        p4 = [r[0] - (r[2]/2), r[1] - (r[3]/2)]
+
+        return np.array([p1, p2, p3, p4])
+
+        
+    def sq_dist2(self, sq1, sq2):
+        """get distances between rects"""
+        rct1 = [self.g.nodes[sq1]['x'], self.g.nodes[sq1]['y'], self.g.nodes[sq1]['width'], self.g.nodes[sq1]['height']]
+        rct2 = [self.g.nodes[sq2]['x'], self.g.nodes[sq2]['y'], self.g.nodes[sq2]['width'], self.g.nodes[sq2]['height']]
+
+        # rct2 = [1,5,2,3]
+        # rct1 = [4,5,1,1]
+        # rct1 =  [704.85, 334.94, 155, 197]
+        # rct2 =  [605, 229, 68, 167]
+
+
+
+        # get ranges of rectangles
+        rng1x = ((rct1[0]-rct1[2]/2), (rct1[0]+rct1[2]/2))
+        rng2x = ((rct2[0]-rct2[2]/2), (rct2[0]+rct2[2]/2))
+
+        rng1y = ((rct1[1]-rct1[3]/2), (rct1[1]+rct1[3]/2))
+        rng2y = ((rct2[1]-rct2[3]/2), (rct2[1]+rct2[3]/2))
+
+        ovlp_x = self.dim_ovlp(rng1x, rng2x)
+        ovlp_y = self.dim_ovlp(rng1y, rng2y)
+
+        if ovlp_x == set() and ovlp_y == set():
+            # print('no overlap whatsoever')
+
+            rct_pts1 = self.rect_points(rct1)
+            rct_pts2 = self.rect_points(rct2)
+            dist_ar = euclidean_distances(rct_pts1, rct_pts2)
+            min_dist = np.min(dist_ar)
+            min_loc = np.where(dist_ar == min_dist)
+
+            pt1 = rct_pts1[min_loc[0]]
+            pt2 = rct_pts2[min_loc[1]]
+
+            dx = pt1[0][0] - pt2[0][0]
+            dy = pt1[0][1] - pt2[0][1]
+
+        elif ovlp_x == set() and len(ovlp_y) > 0:
+            # print('overlap in y, not x')
+            rct1_pts = np.array(rng1x)
+            rct2_pts = np.array(rng2x)
+
+            dist_ar = np.array([
+                [abs(rct1_pts[0] - rct2_pts[0]), abs(rct1_pts[0] - rct2_pts[1])],
+                [abs(rct1_pts[1] - rct2_pts[0]), abs(rct1_pts[1] - rct2_pts[1])]])
+            min_dist = np.min(dist_ar)
+            min_loc = np.where(dist_ar == min_dist)
+
+            pt1 = rct1_pts[min_loc[0][0]]
+            pt2 = rct2_pts[min_loc[1][0]]
+
+            dx = pt1 - pt2
+            dy = 0
+
+        elif ovlp_y == set() and len(ovlp_x) > 0:
+            # print('overlap in x, not y')
+            # overlap in y dimension but not x
+            rct1_pts = np.array(rng1y)
+            rct2_pts = np.array(rng2y)
+
+            dist_ar = np.array([
+                [abs(rct1_pts[0] - rct2_pts[0]), abs(rct1_pts[0] - rct2_pts[1])],
+                [abs(rct1_pts[1] - rct2_pts[0]), abs(rct1_pts[1] - rct2_pts[1])]])
+
+            min_dist = np.min(dist_ar)
+            min_loc = np.where(dist_ar == min_dist)
+
+            # print(rct2_pts)
+            # print(rct1_pts)
+
+            # print(dist_ar)
+            # print(min_dist)
+            # print(min_loc)
+                  
+            pt1 = rct1_pts[min_loc[0][0]]
+            pt2 = rct2_pts[min_loc[1][0]]
+
+            dy = pt1 - pt2
+            dx = 0
+
+        else:
+            print('overlap in both')
+            dx = (rct1[0] - rct2[0]) * 0.2
+            dy = (rct1[1] - rct2[1]) * 0.2
+
+
+        return dx, dy
+
 
     def update_demo(self):
         """update positions, save in self.g vertex properties directly (no return)"""
@@ -56,15 +208,24 @@ class QtTest(QWidget):
         # for v in self.g.nodes():
         #     pos[v] = [self.g.nodes[v]['x'],self.g.nodes[v]['y']]
 
+        # calculate repulsive forces
         for v in self.g.nodes():
             self.g.nodes[v]['dx'] = 0
             self.g.nodes[v]['dy'] = 0
             for u in self.g.nodes():
                 if v != u:
-                    dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
-                    dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
+                    # dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
+                    # dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
                     # use own distance function here
+                    
+                    dx, dy = self.sq_dist2(v, u)
+                    # sleep(0.1)
+                    
+                    self.update()
+                    # maybe i can only update once per timer 
+                    
                     delta = math.sqrt(dx*dx+dy*dy)
+                    # delta = self.sq_dist(v, u)
                     if delta != 0:
                         d = self.f_r(delta,self.k)/delta
                         self.g.nodes[v]['dx'] += dx*d
@@ -72,8 +233,11 @@ class QtTest(QWidget):
 
         # calculate attractive forces
         for v,u in self.g.edges():
-            dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
-            dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
+            # dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
+            # dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
+            
+            dx, dy = self.sq_dist2(v, u)
+            
             delta = math.sqrt(dx*dx+dy*dy)
             if delta != 0:
                 d = self.f_a(delta,self.k)/delta
@@ -110,7 +274,7 @@ class QtTest(QWidget):
         if self.t < 0: 
             self.t = 0
 
-        self.update()
+        # self.update()
 
         # pos = {}
         # for v in self.g.nodes():
@@ -135,16 +299,37 @@ class QtTest(QWidget):
         # dumper([str(i) for i in edges])
 
         qp.setPen(QPen(Qt.green, 2, Qt.SolidLine))
-
-        # [qp.drawLine(e[0][0], e[0][1], e[1][0], e[1][1]) for e in edges]
         [self.draw_arrow(qp, e[0][0], e[0][1], e[1][0], e[1][1], (node_width/2) + 5) for e in edges]
+        # [qp.drawLine(e[0][0], e[0][1], e[1][0], e[1][1]) for e in edges]
+        
+        # qp.setPen(QPen(Qt.black, 3, Qt.SolidLine))
+
+        # debug overlap
         
         qp.setPen(QPen(Qt.black, 3, Qt.SolidLine))
-        # [qp.drawEllipse(g.nodes[v]['x']-(node_width/2), g.nodes[v]['y']- (node_width/2), node_width, node_width) for v in g.nodes]
-        [qp.drawRect(g.nodes[v]['x'] - (g.nodes[v]['width']/2), 
+        for v in g.nodes:
+            
+            # if v == self.main_v:
+            #     qp.setPen(QPen(Qt.blue, 3, Qt.SolidLine))
+                
+            # if v == self.cmpr_v:
+            #     qp.setPen(QPen(Qt.blue, 3, Qt.SolidLine))
+                
+            # else:
+            qp.drawRect(g.nodes[v]['x'] - (g.nodes[v]['width']/2), 
                      g.nodes[v]['y'] - (g.nodes[v]['height']/2), 
                      g.nodes[v]['width'], 
-                     g.nodes[v]['height']) for v in g.nodes]
+                     g.nodes[v]['height'])
+
+        qp.setFont(QFont('Decorative', 10))
+        [qp.drawText(g.nodes[v]['x'], g.nodes[v]['y'], str(v)) for v in self.g.nodes]
+
+
+
+        # [qp.drawRect(g.nodes[v]['x'] - (g.nodes[v]['width']/2), 
+        #      g.nodes[v]['y'] - (g.nodes[v]['height']/2), 
+        #      g.nodes[v]['width'], 
+        #      g.nodes[v]['height']) for v in g.nodes]
 
 
     
@@ -176,7 +361,7 @@ class QtTest(QWidget):
         ar2_x = arw_goal_x + arw_len * math.cos(math.radians(ar2))
         ar2_y = arw_goal_y + arw_len * math.sin(math.radians(ar2))
         
-        print(start_px, start_py, arw_goal_x, arw_goal_y)
+        # print(start_px, start_py, arw_goal_x, arw_goal_y)
 
         # qp.drawLine(p1x, p1y, p2x, p2y)
         # qp.drawLine(p1x, p1y, arw_goal_x, arw_goal_y)
@@ -185,14 +370,31 @@ class QtTest(QWidget):
         qp.drawLine(ar2_x, ar2_y, arw_goal_x, arw_goal_y)
 
 if __name__ == "__main__":
-    g = nx.random_geometric_graph(20, 0.3)
+    while True:
+        g = nx.random_geometric_graph(8, 0.25)
+        if nx.number_connected_components(g) == 1:
+            break
 
     for v in g.nodes:
-        g.nodes[v]['x'] = choices(range(15))[0]
-        g.nodes[v]['y'] = choices(range(15))[0]
+        g.nodes[v]['x'] = choices(range(100, 700))[0]
+        g.nodes[v]['y'] = choices(range(100, 700))[0]
 
-        g.nodes[v]['width'] = g.nodes[v]['height'] = choices(range(15))[0]
+        g.nodes[v]['width'] = choices(range(50,200))[0]
+        g.nodes[v]['height'] = choices(range(50,200))[0]
     
     App = QApplication(sys.argv)
-    window = QtTest(g)
+    w = QtTest(g)
+    
+    # w.timer.stop()
+    
     App.exec()
+
+    
+# * debug
+# stopping timer doesn't close window :))) -> possible to debug
+# 2 and 4 are overlapping
+# not overlapping: 4 and 0
+# overlapping: 1, 6
+
+
+# w.sq_dist2(4,0)
