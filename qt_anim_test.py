@@ -233,10 +233,10 @@ class QtTest(QWidget):
 
         # calculate attractive forces
         for v,u in self.g.edges():
-            dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
-            dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
+            # dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
+            # dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
             
-            # dx, dy = self.sq_dist2(v, u)
+            dx, dy = self.sq_dist2(v, u)
             
             delta = math.sqrt(dx*dx+dy*dy)
             if delta != 0:
@@ -404,7 +404,7 @@ class QtTest(QWidget):
 if __name__ == "__main__":
     while True:
         g = nx.random_geometric_graph(20, 0.2)
-        if nx.number_connected_components(g) == 1:
+        if nx.number_connected_components(g) == 2 and min([len(i) for i in nx.connected_components(g)]) > 5:
             break
 
     for v in g.nodes:
@@ -440,21 +440,3 @@ if __name__ == "__main__":
 
 
 # text -> node size? 
-
-# optimization: maybe the boost stuff, some time
-# question is if c++ has arrays/matrices (doesn't sound like that based on the description at https://valelab4.ucsf.edu/svn/3rdpartypublic/boost/libs/graph/example/fr_layout.cpp)
-# if not, might be easier to adapt current steps to c++ code rather than to rewrite it in python to arrays
-# there are arrays, but seems like all matrix operations still have to be broken down to individual elements in for loops?  
-
-
-# done                            
-
-# maybe border layout, because not clear what the code does there
-# boundary could be repellant? 
-# something like window? for zoom 
-# maybe see how nx is doing it
-# doesn't really i think
-# it just is all scaled afterwards
-# but wouldn't really work with boxes being specific sizes (would change in size if overall layout changes)
-
-
