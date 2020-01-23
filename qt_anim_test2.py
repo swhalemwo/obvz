@@ -341,6 +341,15 @@ class QtTest(QWidget):
         #                          delta_nds,
         #                          (k * k / distance**2) - A * distance / k)
 
+        dim_ar = np.array([[g.nodes[i]['width'], g.nodes[i]['height']] for i in g.nodes])
+
+        # repellant edges
+        displacement[:,0] += self.k**2/(pos_nds[:,0] - dim_ar[:,0]/2)**2
+        displacement[:,1] += self.k**2/(pos_nds[:,1] - dim_ar[:,1]/2)**2
+        displacement[:,0] -= self.k**2/(self.width - (pos_nds[:,0] + dim_ar[:,0]/2))**2
+        displacement[:,1] -= self.k**2/(self.height - (pos_nds[:,1] + dim_ar[:,1]/2))**2
+
+
         
         length = np.linalg.norm(displacement, axis=-1)
         length = np.where(length < 0.01, 0.1, length)
