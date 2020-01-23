@@ -4,6 +4,7 @@ from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont
 from sklearn.metrics.pairwise import euclidean_distances
 
 from time import sleep
+from scipy.spatial import distance as dist
 
 import sys
 import signal
@@ -16,6 +17,63 @@ from random import sample, choices
 from collections import Counter
 
 import networkx as nx
+
+def mat_scaler(A):
+    """scales up square matrix by doubling each dimension + reordering, effectively splitting each cell into 4"""
+    A_horz_list = [A]*4
+    A_horz_arr = np.hstack(A_horz_list)
+    A_vert_list = [A_horz_arr]*4
+    A_scl = np.vstack(A_vert_list)
+    
+    nbr_points = A.shape[0]
+    A_order = [(i, i + nbr_points, i + 2*nbr_points, i + 3*nbr_points) for i in range(nbr_points)]
+    A_order_flat = [item for sublist in A_order for item in sublist]
+        
+    A_scl_rorder = A_scl[np.ix_(A_order_flat, A_order_flat)]
+
+    return(A_scl_rorder)
+
+def get_dim_ovlp(pos, rorder):
+    """see if rectangles (indicated by 4 corner points) overlap, 
+    has to be called with just 1D of points
+    """
+    
+    nbr_nds = int(pos.shape[0]/4)
+    nbr_pts = pos.shape[0]
+
+    d = pos[:,np.newaxis] - pos[np.newaxis,:]
+    d_rshp = np.reshape(d, (int((nbr_pts**2)/4), 4))
+    d_rshp_rord = d_rshp[rorder]
+    d_rord2 = np.reshape(d_rshp_rord, (nbr_nds, nbr_nds, 16))
+    d_min = np.min(d_rord2, axis = 2)
+    d_max = np.max(d_rord2, axis = 2)
+    
+    d_ovlp = d_min * d_max
+    
+    d_ovlp2 = (np.abs(d_ovlp)/d_ovlp)*(-1)
+    np.clip(d_ovlp2, 0, 1, out = d_ovlp2)
+    return d_ovlp2, np.abs(d_min)
+
+def get_point_mat_reorder_order(point_nbr):
+    """gets reorder sequence to re-arrange rows in point dist matrix"""
+    test_order = []
+    # point_nbr = 20
+
+    for i in range(point_nbr):
+            for k in range(4):
+                test_order.append(i+ (point_nbr*k))
+
+    test_order = np.array(test_order)
+
+    test_orders = []
+    for i in range(point_nbr):
+        test_orders.append((test_order + (point_nbr*4*i)).tolist())
+
+    row_order_final = [i for sub_list in test_orders for i in sub_list]
+    return row_order_final
+
+
+
 
 
 class QtTest(QWidget):
@@ -227,124 +285,60 @@ class QtTest(QWidget):
 
         pos = np.concatenate(sqs)
         A = nx.to_numpy_array(self.g)
-        # A[0,0] = 1
-        
-        A_horz_list = [A]*4
-        A_horz_arr = np.hstack(A_horz_list)
-        A_vert_list = [A_horz_arr]*4
-        A_scl = np.vstack(A_vert_list)
 
-        # A_scl = np.vstack([np.hstack([A,A]), np.hstack([A,A])])
-        nbr_points = 20
-        A_order = [(i, i + nbr_points, i + 2*nbr_points, i + 3*nbr_points) for i in range(nbr_points)]
-        A_order_flat = [item for sublist in A_order for item in sublist]
-        
-        A_scl_rorder = A_scl[np.ix_(A_order_flat, A_order_flat)]
-        
-        delta = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
-        distance = np.linalg.norm(delta, axis=-1)
-        np.clip(distance, 1, None, out=distance)
+        # A_scl_rorder = mat_scaler(A)
+
+        pos_nds = np.array([[self.g.nodes[i]['x'], self.g.nodes[i]['y']] for i in self.g.nodes])
+        delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
+
+        nbr_nds = A.shape[0]
+        nbr_pts = pos.shape[0]
+
+        # using forces on vertices
+        # doesn't work too well: can't really control as much (not obvs what's going on)
+
+        row_order = get_point_mat_reorder_order(len(g.nodes))
+        x_ovlp, dx_min = get_dim_ovlp(pos[:,0], row_order)
+        y_ovlp, dy_min = get_dim_ovlp(pos[:,1], row_order)
+
+        both_ovlp = x_ovlp * y_ovlp
+        x_ovlp2 = x_ovlp - both_ovlp
+        y_ovlp2 = y_ovlp - both_ovlp
+
+        none_ovlp = np.ones((nbr_nds, nbr_nds)) - both_ovlp - x_ovlp2 - y_ovlp2
+
+        # also have to get the point distances
+
+        delta_pts = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
+        dist_pts = np.linalg.norm(delta_pts, axis=-1)
+
+        dist_rshp = np.reshape(dist_pts, (int((nbr_pts**2)/4), 4))
+        dist_rshp_rord = dist_rshp[row_order]
+        dist_rord = np.reshape(dist_rshp_rord, (nbr_nds, nbr_nds, 16))
+        min_pt_dists = np.min(dist_rord, axis = 2)
+
+        all_ovlp_test = x_ovlp2 + y_ovlp2 + both_ovlp + none_ovlp
+
+        distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
+
 
         displacement = np.einsum('ijk,ij->ik',
-                                 delta,
-                                 (self.k * self.k / distance**2 - A_scl_rorder * distance / self.k))
+                                 delta_nds,
+                                 ((self.k * self.k / distance**2) - A * distance / self.k))
         
         length = np.linalg.norm(displacement, axis=-1)
         length = np.where(length < 0.01, 0.1, length)
         delta_pos = np.einsum('ij,i->ij', displacement, self.t / length)
 
-        delta_pos_rshp = np.reshape(delta_pos, (nbr_points,4,2))
-        delta_pos_sum = np.mean(delta_pos_rshp, axis = 1)
         
         # re-assigning values
-        for i in zip(self.g.nodes, delta_pos_sum):
+        for i in zip(self.g.nodes, delta_pos):
             self.g.nodes[i[0]]['x'] += i[1][0]
             self.g.nodes[i[0]]['y'] += i[1][1]
 
 
-        # calculate repulsive forces
-        # for v in self.g.nodes():
-        #     self.g.nodes[v]['dx'] = 0
-        #     self.g.nodes[v]['dy'] = 0
-        #     for u in self.g.nodes():
-        #         if v != u:
-        #             # dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
-        #             # dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
-        #             # use own distance function here
-                    
-        #             dx, dy = self.sq_dist2(v, u)
-        #             # sleep(0.1)
-                    
-        #             self.update()
-        #             # maybe i can only update once per timer 
-                    
-        #             delta = math.sqrt(dx*dx+dy*dy)
-        #             # delta = self.sq_dist(v, u)
-        #             if delta != 0:
-        #                 d = self.f_r(delta,self.k)/delta
-        #                 self.g.nodes[v]['dx'] += dx*d
-        #                 self.g.nodes[v]['dy'] += dy*d
-
-        # # calculate attractive forces
-        # for v,u in self.g.edges():
-        #     # dx = self.g.nodes[v]['x'] - self.g.nodes[u]['x']
-        #     # dy = self.g.nodes[v]['y'] - self.g.nodes[u]['y']
-            
-        #     dx, dy = self.sq_dist2(v, u)
-            
-        #     delta = math.sqrt(dx*dx+dy*dy)
-        #     if delta != 0:
-        #         d = self.f_a(delta,self.k)/delta
-        #         ddx = dx*d
-        #         ddy = dy*d
-        #         self.g.nodes[v]['dx'] += -ddx
-        #         self.g.nodes[u]['dx'] += +ddx
-        #         self.g.nodes[v]['dy'] += -ddy
-        #         self.g.nodes[u]['dy'] += +ddy
-
-        # add repellant edges
-        # what's a good function hmm
-        # (negative) exponential? 
-        # or could just use the repellant force
-        # then it's the same as any other node
-
-        # for v in self.g.nodes():
-        #     dist_from_left = self.g.nodes[v]['x'] - (self.g.nodes[v]['width']/2)
-        #     d = self.f_r(dist_from_left, self.k)/dist_from_left
-        #     # force is always positive on x-axis (ideally at least)
-        #     self.g.nodes[v]['dx'] += d
-            
-        #     dist_from_right = self.W - (self.g.nodes[v]['x'] + (self.g.nodes[v]['width']/2))
-        #     d = self.f_r(dist_from_right, self.k)/dist_from_right
-        #     self.g.nodes[v]['dx'] -= d
-            
-        #     dist_from_top = self.g.nodes[v]['y'] - (self.g.nodes[v]['height']/2)
-        #     d = self.f_r(dist_from_top, self.k)/dist_from_top
-        #     # force is always positive on x-axis (ideally at least)
-        #     self.g.nodes[v]['dy'] += d
-            
-        #     dist_from_bottom = self.L - (self.g.nodes[v]['y'] + (self.g.nodes[v]['height']/2))
-        #     d = self.f_r(dist_from_bottom, self.k)/dist_from_bottom
-        #     self.g.nodes[v]['dy'] -= d
-
-            
-        # limit the maximum displacement to the temperature t
-        # and then prevent from being displace outside frame
-        
-        # for v in self.g.nodes():
-        #     dx = self.g.nodes[v]['dx']
-        #     dy = self.g.nodes[v]['dy']
-        #     disp = math.sqrt(dx*dx+dy*dy)
-        #     if disp != 0:
-        #         # cnt += 1
-        #         d = min(disp,self.t)/disp
-        #         x = self.g.nodes[v]['x'] + dx*d
-        #         y = self.g.nodes[v]['y'] + dy*d
-                
-        #         self.g.nodes[v]['x'] = x
-        #         self.g.nodes[v]['y'] = y
-                
-
+        # maybe add repellant edges again here
+        # maybe optimize it too
 
         # cooling
         self.t -= self.dt
@@ -449,7 +443,7 @@ class QtTest(QWidget):
 
 if __name__ == "__main__":
     while True:
-        g = nx.random_geometric_graph(20, 0.2)
+        g = nx.random_geometric_graph(10, 0.3)
         # if nx.number_connected_components(g) == 2 and min([len(i) for i in nx.connected_components(g)]) > 5:
         if nx.number_connected_components(g) == 1: 
             break
@@ -471,3 +465,4 @@ if __name__ == "__main__":
     
 # think i have to add angle 
 # 
+
