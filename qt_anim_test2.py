@@ -18,6 +18,8 @@ from collections import Counter
 
 import networkx as nx
 
+App = QApplication(sys.argv)
+
 def mat_scaler(A):
     """scales up square matrix by doubling each dimension + reordering, effectively splitting each cell into 4"""
     A_horz_list = [A]*4
@@ -33,7 +35,7 @@ def mat_scaler(A):
 
     return(A_scl_rorder)
 
-def get_dim_ovlp(pos, rorder):
+def get_dim_ovlp(pos, row_order):
     """see if rectangles (indicated by 4 corner points) overlap, 
     has to be called with just 1D of points
     """
@@ -43,16 +45,21 @@ def get_dim_ovlp(pos, rorder):
 
     d = pos[:,np.newaxis] - pos[np.newaxis,:]
     d_rshp = np.reshape(d, (int((nbr_pts**2)/4), 4))
-    d_rshp_rord = d_rshp[rorder]
+    d_rshp_rord = d_rshp[row_order]
     d_rord2 = np.reshape(d_rshp_rord, (nbr_nds, nbr_nds, 16))
     d_min = np.min(d_rord2, axis = 2)
     d_max = np.max(d_rord2, axis = 2)
     
+    d_shrt = np.min(np.abs(d_rord2), axis = 2)
+    
     d_ovlp = d_min * d_max
     
+    d_ovlp[np.where(d_ovlp == 0)] = 1
+
     d_ovlp2 = (np.abs(d_ovlp)/d_ovlp)*(-1)
     np.clip(d_ovlp2, 0, 1, out = d_ovlp2)
-    return d_ovlp2, np.abs(d_min)
+    # return d_ovlp2, np.abs(d_min)
+    return d_ovlp2, d_shrt
 
 def get_point_mat_reorder_order(point_nbr):
     """gets reorder sequence to re-arrange rows in point dist matrix"""
@@ -97,7 +104,8 @@ class QtTest(QWidget):
         self.cmpr_v = ""
         # k is something with strength of repulsive force
         
-        self.k = math.sqrt((self.area)/nx.number_of_nodes(g))/4
+        # self.k = math.sqrt((self.area)/nx.number_of_nodes(g))/4
+        self.k = 50
         print('k: ', self.k)
         self.timer = QTimer(self, timeout=self.update_demo, interval=40)
         self.timer.start()
@@ -277,27 +285,31 @@ class QtTest(QWidget):
         
         sqs = []
         for i in self.g.nodes():
-            sqx = self.rect_points([self.g.nodes[i]['x'], 
-                                    self.g.nodes[i]['y'], 
-                                    self.g.nodes[i]['width'], 
-                                    self.g.nodes[i]['height']])
+            sqx = self.rect_points([self.g.nodes[i]['x'], self.g.nodes[i]['y'], 
+                                    self.g.nodes[i]['width'], self.g.nodes[i]['height']])
             sqs.append(sqx)
+
+        # sqs = []
+        # for i in w.g.nodes():
+        #     sqx = w.rect_points([w.g.nodes[i]['x'], w.g.nodes[i]['y'], 
+        #                             w.g.nodes[i]['width'], w.g.nodes[i]['height']])
+        #     sqs.append(sqx)
+
 
         pos = np.concatenate(sqs)
         A = nx.to_numpy_array(self.g)
-
-        # A_scl_rorder = mat_scaler(A)
-
+        # A = nx.to_numpy_array(self.g)
+        
         pos_nds = np.array([[self.g.nodes[i]['x'], self.g.nodes[i]['y']] for i in self.g.nodes])
+        # pos_nds = np.array([[w.g.nodes[i]['x'], w.g.nodes[i]['y']] for i in w.g.nodes])
+        
         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
 
         nbr_nds = A.shape[0]
         nbr_pts = pos.shape[0]
 
-        # using forces on vertices
-        # doesn't work too well: can't really control as much (not obvs what's going on)
-
-        row_order = get_point_mat_reorder_order(len(g.nodes))
+        row_order = get_point_mat_reorder_order(len(self.g.nodes))
+        # row_order = get_point_mat_reorder_order(len(w.g.nodes))
         x_ovlp, dx_min = get_dim_ovlp(pos[:,0], row_order)
         y_ovlp, dy_min = get_dim_ovlp(pos[:,1], row_order)
 
@@ -307,8 +319,7 @@ class QtTest(QWidget):
 
         none_ovlp = np.ones((nbr_nds, nbr_nds)) - both_ovlp - x_ovlp2 - y_ovlp2
 
-        # also have to get the point distances
-
+        # also have to get the point distances for none_ovlp (then shortest)
         delta_pts = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
         dist_pts = np.linalg.norm(delta_pts, axis=-1)
 
@@ -317,14 +328,19 @@ class QtTest(QWidget):
         dist_rord = np.reshape(dist_rshp_rord, (nbr_nds, nbr_nds, 16))
         min_pt_dists = np.min(dist_rord, axis = 2)
 
-        all_ovlp_test = x_ovlp2 + y_ovlp2 + both_ovlp + none_ovlp
+        # all_ovlp_test = x_ovlp2 + y_ovlp2 + both_ovlp + none_ovlp
 
         distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
-
-
+        np.clip(distance, 1, None, out = distance)
+        
         displacement = np.einsum('ijk,ij->ik',
                                  delta_nds,
-                                 ((self.k * self.k / distance**2) - A * distance / self.k))
+                                 (self.k * self.k / distance**2) - A * distance / self.k)
+
+        # displacement = np.einsum('ijk,ij->ik',
+        #                          delta_nds,
+        #                          (k * k / distance**2) - A * distance / k)
+
         
         length = np.linalg.norm(displacement, axis=-1)
         length = np.where(length < 0.01, 0.1, length)
@@ -442,8 +458,11 @@ class QtTest(QWidget):
         qp.drawLine(ar2_x, ar2_y, arw_goal_x, arw_goal_y)
 
 if __name__ == "__main__":
+    
+
     while True:
-        g = nx.random_geometric_graph(10, 0.3)
+        g = nx.random_geometric_graph(20, 0.25)
+        # g = nx.random_geometric_graph(2, 1)
         # if nx.number_connected_components(g) == 2 and min([len(i) for i in nx.connected_components(g)]) > 5:
         if nx.number_connected_components(g) == 1: 
             break
@@ -454,8 +473,16 @@ if __name__ == "__main__":
 
         g.nodes[v]['width'] = choices(range(10,75))[0]
         g.nodes[v]['height'] = choices(range(10,75))[0]
+
+    # g.nodes[0]['x'] = g.nodes[0]['y'] = 100
+    # g.nodes[1]['x'] = g.nodes[1]['y'] = 110
     
-    App = QApplication(sys.argv)
+    # g.nodes[0]['width'] = g.nodes[0]['height'] = 10
+    # g.nodes[1]['width'] = g.nodes[1]['height'] = 10
+    
+    
+    
+
     w = QtTest(g)
     
     # w.timer.stop()
