@@ -96,7 +96,8 @@ class QtTest(QWidget):
         self.W = self.L = 800
         self.area = self.W*self.L
 
-        self.t = self.W/60
+        # self.t = self.W/60
+        self.t = 8
         self.dt = self.t/(200)
         self.area = self.W*self.L
 
@@ -282,57 +283,64 @@ class QtTest(QWidget):
         # for v in self.g.nodes():
         #     pos[v] = [self.g.nodes[v]['x'],self.g.nodes[v]['y']]
 
-        
-        sqs = []
-        for i in self.g.nodes():
-            sqx = self.rect_points([self.g.nodes[i]['x'], self.g.nodes[i]['y'], 
-                                    self.g.nodes[i]['width'], self.g.nodes[i]['height']])
-            sqs.append(sqx)
-
-        # sqs = []
-        # for i in w.g.nodes():
-        #     sqx = w.rect_points([w.g.nodes[i]['x'], w.g.nodes[i]['y'], 
-        #                             w.g.nodes[i]['width'], w.g.nodes[i]['height']])
-        #     sqs.append(sqx)
-
-
-        pos = np.concatenate(sqs)
         A = nx.to_numpy_array(self.g)
-        # A = nx.to_numpy_array(self.g)
         
-        pos_nds = np.array([[self.g.nodes[i]['x'], self.g.nodes[i]['y']] for i in self.g.nodes])
-        # pos_nds = np.array([[w.g.nodes[i]['x'], w.g.nodes[i]['y']] for i in w.g.nodes])
-        
-        delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
+        if self.t < self.dt*40:
+            sqs = []
+            for i in self.g.nodes():
+                sqx = self.rect_points([self.g.nodes[i]['x'], self.g.nodes[i]['y'], 
+                                        self.g.nodes[i]['width'], self.g.nodes[i]['height']])
+                sqs.append(sqx)
 
-        nbr_nds = A.shape[0]
-        nbr_pts = pos.shape[0]
+            # sqs = []
+            # for i in w.g.nodes():
+            #     sqx = w.rect_points([w.g.nodes[i]['x'], w.g.nodes[i]['y'], 
+            #                             w.g.nodes[i]['width'], w.g.nodes[i]['height']])
+            #     sqs.append(sqx)
 
-        row_order = get_point_mat_reorder_order(len(self.g.nodes))
-        # row_order = get_point_mat_reorder_order(len(w.g.nodes))
-        x_ovlp, dx_min = get_dim_ovlp(pos[:,0], row_order)
-        y_ovlp, dy_min = get_dim_ovlp(pos[:,1], row_order)
 
-        both_ovlp = x_ovlp * y_ovlp
-        x_ovlp2 = x_ovlp - both_ovlp
-        y_ovlp2 = y_ovlp - both_ovlp
+            pos = np.concatenate(sqs)
+            # A = nx.to_numpy_array(self.g)
 
-        none_ovlp = np.ones((nbr_nds, nbr_nds)) - both_ovlp - x_ovlp2 - y_ovlp2
+            pos_nds = np.array([[self.g.nodes[i]['x'], self.g.nodes[i]['y']] for i in self.g.nodes])
+            # pos_nds = np.array([[w.g.nodes[i]['x'], w.g.nodes[i]['y']] for i in w.g.nodes])
 
-        # also have to get the point distances for none_ovlp (then shortest)
-        delta_pts = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
-        dist_pts = np.linalg.norm(delta_pts, axis=-1)
+            delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
 
-        dist_rshp = np.reshape(dist_pts, (int((nbr_pts**2)/4), 4))
-        dist_rshp_rord = dist_rshp[row_order]
-        dist_rord = np.reshape(dist_rshp_rord, (nbr_nds, nbr_nds, 16))
-        min_pt_dists = np.min(dist_rord, axis = 2)
+            nbr_nds = A.shape[0]
+            nbr_pts = pos.shape[0]
 
-        # all_ovlp_test = x_ovlp2 + y_ovlp2 + both_ovlp + none_ovlp
+            row_order = get_point_mat_reorder_order(len(self.g.nodes))
+            # row_order = get_point_mat_reorder_order(len(w.g.nodes))
+            x_ovlp, dx_min = get_dim_ovlp(pos[:,0], row_order)
+            y_ovlp, dy_min = get_dim_ovlp(pos[:,1], row_order)
 
-        distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
-        np.clip(distance, 1, None, out = distance)
-        
+            both_ovlp = x_ovlp * y_ovlp
+            x_ovlp2 = x_ovlp - both_ovlp
+            y_ovlp2 = y_ovlp - both_ovlp
+
+            none_ovlp = np.ones((nbr_nds, nbr_nds)) - both_ovlp - x_ovlp2 - y_ovlp2
+
+            # also have to get the point distances for none_ovlp (then shortest)
+            delta_pts = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
+            dist_pts = np.linalg.norm(delta_pts, axis=-1)
+
+            dist_rshp = np.reshape(dist_pts, (int((nbr_pts**2)/4), 4))
+            dist_rshp_rord = dist_rshp[row_order]
+            dist_rord = np.reshape(dist_rshp_rord, (nbr_nds, nbr_nds, 16))
+            min_pt_dists = np.min(dist_rord, axis = 2)
+
+            # all_ovlp_test = x_ovlp2 + y_ovlp2 + both_ovlp + none_ovlp
+
+            distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
+            np.clip(distance, 1, None, out = distance)
+
+        else: 
+            pos_nds = np.array([[self.g.nodes[i]['x'], self.g.nodes[i]['y']] for i in self.g.nodes])
+            delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
+            distance = np.linalg.norm(delta_nds, axis=-1)
+            np.clip(distance, 1, None, out = distance)
+
         displacement = np.einsum('ijk,ij->ik',
                                  delta_nds,
                                  (self.k * self.k / distance**2) - A * distance / self.k)
@@ -344,10 +352,10 @@ class QtTest(QWidget):
         dim_ar = np.array([[g.nodes[i]['width'], g.nodes[i]['height']] for i in g.nodes])
 
         # repellant edges
-        displacement[:,0] += self.k**2/(pos_nds[:,0] - dim_ar[:,0]/2)**2
-        displacement[:,1] += self.k**2/(pos_nds[:,1] - dim_ar[:,1]/2)**2
-        displacement[:,0] -= self.k**2/(self.width - (pos_nds[:,0] + dim_ar[:,0]/2))**2
-        displacement[:,1] -= self.k**2/(self.height - (pos_nds[:,1] + dim_ar[:,1]/2))**2
+        displacement[:,0] += (self.k*10)**2/(pos_nds[:,0] - dim_ar[:,0]/2)**2
+        displacement[:,1] += (self.k*10)**2/(pos_nds[:,1] - dim_ar[:,1]/2)**2
+        displacement[:,0] -= (self.k*10)**2/(self.width - (pos_nds[:,0] + dim_ar[:,0]/2))**2
+        displacement[:,1] -= (self.k*10)**2/(self.height - (pos_nds[:,1] + dim_ar[:,1]/2))**2
 
 
         
@@ -366,7 +374,15 @@ class QtTest(QWidget):
         # maybe optimize it too
 
         # cooling
-        self.t -= self.dt
+        if self.t > self.dt*40:
+            self.t -= self.dt
+        
+
+        if self.t < self.dt*40:
+            print(np.sum(both_ovlp))
+            if np.sum(both_ovlp) == nbr_nds:
+                self.t -= self.dt
+            
         print('temperature: ', self.t)
         if self.t < 0: 
             self.t = 0
@@ -470,7 +486,7 @@ if __name__ == "__main__":
     
 
     while True:
-        g = nx.random_geometric_graph(20, 0.25)
+        g = nx.random_geometric_graph(15, 0.3)
         # g = nx.random_geometric_graph(2, 1)
         # if nx.number_connected_components(g) == 2 and min([len(i) for i in nx.connected_components(g)]) > 5:
         if nx.number_connected_components(g) == 1: 
@@ -480,8 +496,8 @@ if __name__ == "__main__":
         g.nodes[v]['x'] = choices(range(100, 700))[0]
         g.nodes[v]['y'] = choices(range(100, 700))[0]
 
-        g.nodes[v]['width'] = choices(range(10,75))[0]
-        g.nodes[v]['height'] = choices(range(10,75))[0]
+        g.nodes[v]['width'] = choices(range(10,80))[0]
+        g.nodes[v]['height'] = choices(range(10,80))[0]
 
     # g.nodes[0]['x'] = g.nodes[0]['y'] = 100
     # g.nodes[1]['x'] = g.nodes[1]['y'] = 110
