@@ -55,7 +55,11 @@
 
 (defun obvis-create-children-links (parent child)
     """basic hierarchical function"""
-    (concat parent " -- " child " -- isa"))
+    (if (> (length parent) 4)
+	    (when (not (equal (substring parent 0 4) "cls_"))
+		(concat parent " -- " child " -- isa"))
+	(concat parent " -- " child " -- isa"))
+    )
 
 
 (defun loop-over-upper-level-nodes (parent)
@@ -75,7 +79,7 @@
 
 
 
-(defun children-specific-depth-let (node depth)
+(defun children-specific-depth-letn (node depth)
     (let ((nodes-upper-level (list node))
 	  (all-nodes (list node))
 	  (all-links ())
@@ -266,19 +270,25 @@
 	(setq rel-node (car rel-nodes))
 
 	;; of classes, don' get children relationships
-	(if (equal (substring rel-node 0 4) "cls_")
-		(progn
-		    (setq node-res (children-specific-depth-let rel-node 8))
-		    (push (car node-res) total-nodes)
-		    )
-	    (progn
-		(setq node-res (children-specific-depth-let rel-node 8))
-		(push (car node-res) total-nodes)
-		(push (cdr node-res) total-links)
-		)
-	    )
+	;; (if (equal (substring rel-node 0 4) "cls_")
+	;; 	(progn
+	;; 	    (setq node-res (children-specific-depth-let rel-node 8))
+	;; 	    (push (car node-res) total-nodes)
+		    
+	;; 	    )
+	;;     (progn
+	;; 	(setq node-res (children-specific-depth-let rel-node 8))
+	;; 	(push (car node-res) total-nodes)
+	;; 	(push (cdr node-res) total-links)
+	;; 	)
+	;;     )
 	;; (print "total nodes")
 	;; (print total-nodes)
+
+	(setq node-res (children-specific-depth-let rel-node 8))
+	(push (car node-res) total-nodes)
+	(push (cdr node-res) total-links)
+
 	(setq rel-nodes (cdr rel-nodes))
 	)
 
@@ -295,17 +305,19 @@
     (setq node-string (mapconcat 'identity uniq-nodes ";"))
     (setq link-string (mapconcat 'identity all-links ";"))
 
+    (print link-string)
+
     ;; can just send multiple things to eaf lol
     ;; maybe good for adding groups later or something
 
-    (eaf-setq update_check 0)
-    (eaf-setq cur_node (org-brain-entry-at-pt))
-    (setq update_check_elisp 0)
+    ;; (eaf-setq update_check 0)
+    ;; (eaf-setq cur_node (org-brain-entry-at-pt))
+    ;; (setq update_check_elisp 0)
 
-    (eaf-setq nodes node-string)
-    (eaf-setq links link-string)
+    ;; (eaf-setq nodes node-string)
+    ;; (eaf-setq links link-string)
 
-    (eaf--send-var-to-python)
+    ;; (eaf--send-var-to-python)
 
     )
     
@@ -351,4 +363,23 @@
 
 
 
-    
+
+
+;; (setq sock (zmq-socket (zmq-context) zmq-REQ))
+;; (zmq-connect sock "tcp://127.0.0.1:5556")
+;; (zmq-send sock "asdf")
+;; (zmq-send sock (obr-viz))
+
+;; (setq mes_back (zmq-recv sock))
+;; (zmq-connect sock "tcp://127.0.0.1:5556")
+
+
+(require 'zmq)
+
+(setq sock (zmq-socket (zmq-context) zmq-PUB))
+(zmq-bind sock "tcp://127.0.0.1:5556")
+(zmq-send sock (obr-viz))
+
+
+(zmq-send-encoded sock "iidmm")
+
