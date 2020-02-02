@@ -1,5 +1,7 @@
 import numpy as np
 
+
+
 # # pythran export pythran_ovlp(float list, int list)
 
 #pythran export pythran_ovlp(float[], int list)
@@ -54,4 +56,12 @@ def pythran_ovlp(pos, row_order):
 # ftemplate-depth can be increased, but still error
 # try just parts? 
 
-
+#pythran export nest_test()
+def nest_test():
+    test_ar = np.array(range(100))
+    test_order = list(range(2500))
+    
+    res = pythran_ovlp(test_ar, test_order)
+    return(res)
+    
+    
