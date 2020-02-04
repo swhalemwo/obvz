@@ -24,6 +24,8 @@ import networkx as nx
 
 from PIL import ImageFont
 
+from ovlp_func import pythran_itrtr
+
 
 app = QApplication(sys.argv)
 
@@ -194,13 +196,13 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # self.area = self.width * self.height
         self.wd_pad = 8 # padding to add to sides of node for better drawing
 
-        self.init_t = 12 # initial temperature: how much displacement possible per move, decreases
-        self.def_iter = 100 # minimum number of iterations
+        self.init_t = 12.0 # initial temperature: how much displacement possible per move, decreases
+        self.def_itr = 100 # minimum number of iterations
         
-        self.dt = self.init_t/(self.def_iter) # delta temperature, (int) sets number of iterations
+        self.dt = self.init_t/(self.def_itr) # delta temperature, (int) sets number of iterations
         self.rep_nd_brd_start = 0.3 # relative size of end time frame in which node borders become repellant
-        self.k = 30 # desired distance? 
-        self.step = 30 # how many steps realignment takes
+        self.k = 30.0 # desired distance? 
+        self.step = 30.0 # how many steps realignment takes
 
         self.adj = [] # adjacency list? 
         self.node_names = []
@@ -485,79 +487,85 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         nbr_pts = pos.shape[0]
         
         self.dim_ar = np.array([[self.g.nodes[i]['width'], self.g.nodes[i]['height']] for i in self.g.nodes])
+        dim_ar2 = self.dim_ar.astype('float64')
         t1 = time()
         ctr = 0
 
-        while True:
-            # avoid node overlap at end
-            if self.t < self.dt * self.def_iter * self.rep_nd_brd_start :
-                delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
-                
-                x_ovlp, dx_min = get_dim_ovlp(pos[:,0], row_order)
-                y_ovlp, dy_min = get_dim_ovlp(pos[:,1], row_order)
-                
-                both_ovlp = x_ovlp * y_ovlp
-                x_ovlp2 = x_ovlp - both_ovlp
-                y_ovlp2 = y_ovlp - both_ovlp
+        pythran_res = pythran_itrtr(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
+                                    self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0)
 
-                none_ovlp = np.ones((nbr_nds, nbr_nds)) - both_ovlp - x_ovlp2 - y_ovlp2
+        pos_nds = pythran_res[0]
 
-                # also have to get the point distances for none_ovlp (then shortest)
-                delta_pts = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
-                dist_pts = np.linalg.norm(delta_pts, axis=-1)
+        # while True:
+        #     # avoid node overlap at end
+        #     if self.t < self.dt * self.def_itr * self.rep_nd_brd_start :
+        #         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
                 
-                dist_rshp = np.reshape(dist_pts, (int((nbr_pts**2)/4), 4))
-                dist_rshp_rord = dist_rshp[row_order]
-                dist_rord = np.reshape(dist_rshp_rord, (nbr_nds, nbr_nds, 16))
-                min_pt_dists = np.min(dist_rord, axis = 2)
+        #         x_ovlp, dx_min = get_dim_ovlp(pos[:,0], row_order)
+        #         y_ovlp, dy_min = get_dim_ovlp(pos[:,1], row_order)
                 
-                distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
-                np.clip(distance, 1, None, out = distance)
+        #         both_ovlp = x_ovlp * y_ovlp
+        #         x_ovlp2 = x_ovlp - both_ovlp
+        #         y_ovlp2 = y_ovlp - both_ovlp
+
+        #         none_ovlp = np.ones((nbr_nds, nbr_nds)) - both_ovlp - x_ovlp2 - y_ovlp2
+
+        #         # also have to get the point distances for none_ovlp (then shortest)
+        #         delta_pts = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
+        #         dist_pts = np.linalg.norm(delta_pts, axis=-1)
+                
+        #         dist_rshp = np.reshape(dist_pts, (int((nbr_pts**2)/4), 4))
+        #         dist_rshp_rord = dist_rshp[row_order]
+        #         dist_rord = np.reshape(dist_rshp_rord, (nbr_nds, nbr_nds, 16))
+        #         min_pt_dists = np.min(dist_rord, axis = 2)
+                
+        #         distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
+        #         np.clip(distance, 1, None, out = distance)
 
                 
-            # just consider nodes as points at first
-            else: 
-                delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
-                distance = np.linalg.norm(delta_nds, axis=-1)
-                np.clip(distance, 1, None, out = distance)
+        #     # just consider nodes as points at first
+        #     else: 
+        #         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
+        #         distance = np.linalg.norm(delta_nds, axis=-1)
+        #         np.clip(distance, 1, None, out = distance)
             
             
-            # update points
-            displacement = np.einsum('ijk,ij->ik',
-                                     delta_nds,
-                                     (self.k * self.k / distance**2) - A * distance / self.k)
+        #     # update points
+        #     displacement = np.einsum('ijk,ij->ik',
+        #                              delta_nds,
+        #                              (self.k * self.k / distance**2) - A * distance / self.k)
 
-            # repellant borders
-            displacement[:,0] += (self.k*10)**2/(pos_nds[:,0] - self.dim_ar[:,0]/2)**2
-            displacement[:,1] += (self.k*10)**2/(pos_nds[:,1] - self.dim_ar[:,1]/2)**2
-            displacement[:,0] -= (self.k*10)**2/(self.width - (pos_nds[:,0] + self.dim_ar[:,0]/2))**2
-            displacement[:,1] -= (self.k*10)**2/(self.height - (pos_nds[:,1] + self.dim_ar[:,1]/2))**2
+        #     # repellant borders
+        #     displacement[:,0] += (self.k*10)**2/(pos_nds[:,0] - self.dim_ar[:,0]/2)**2
+        #     displacement[:,1] += (self.k*10)**2/(pos_nds[:,1] - self.dim_ar[:,1]/2)**2
+        #     displacement[:,0] -= (self.k*10)**2/(self.width - (pos_nds[:,0] + self.dim_ar[:,0]/2))**2
+        #     displacement[:,1] -= (self.k*10)**2/(self.height - (pos_nds[:,1] + self.dim_ar[:,1]/2))**2
 
-            length = np.linalg.norm(displacement, axis=-1)
-            length = np.where(length < 0.01, 0.1, length)
-            delta_pos = np.einsum('ij,i->ij', displacement, self.t / length)
+        #     length = np.linalg.norm(displacement, axis=-1)
+        #     length = np.where(length < 0.01, 0.1, length)
+        #     delta_pos = np.einsum('ij,i->ij', displacement, self.t / length)
 
-            # update node positions
-            pos_nds += delta_pos
-            # scale delta_pos to corner poitns
-            delta_pos_xtnd = np.reshape(np.hstack([delta_pos]*4), (nbr_pts, 2))
-            pos += delta_pos_xtnd
+        #     # update node positions
+        #     pos_nds += delta_pos
+        #     # scale delta_pos to corner poitns
+        #     delta_pos_xtnd = np.reshape(np.hstack([delta_pos]*4), (nbr_pts, 2))
+        #     pos += delta_pos_xtnd
 
             
-            if self.t > self.dt * self.def_iter * self.rep_nd_brd_start:
-                # self.dt*30:
-                self.t -= self.dt
+        #     if self.t > self.dt * self.def_itr * self.rep_nd_brd_start:
+        #         # self.dt*30:
+        #         self.t -= self.dt
 
-            else: 
-                # if self.t < self.dt*40:
-                # print(np.sum(both_ovlp))
-                if np.sum(both_ovlp) == nbr_nds:
-                    self.t -= self.dt
+        #     else: 
+        #         # if self.t < self.dt*40:
+        #         # print(np.sum(both_ovlp))
+        #         if np.sum(both_ovlp) == nbr_nds:
+        #             self.t -= self.dt
 
-            ctr += 1
-            # print('temperature: ', self.t)
-            if self.t < 0: 
-                break
+        #     ctr += 1
+        #     # print('temperature: ', self.t)
+        #     if self.t < 0: 
+        #         break
 
         t2 = time()
         print('calculated layout in ' + str(t2-t1) + 'seconds with ' + str(ctr) + ' iterations')
