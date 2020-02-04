@@ -2,6 +2,8 @@
 
 
 
+/currently rewriting most code for easier access (switching from graph-tool no networkx, testing additional communication interfaces) -> stuff is probably broken/
+
 ** Requirements
 - [[https://github.com/Kungsgeten/org-brain][org-brain]]
 - [[https://github.com/manateelazycat/emacs-application-framework/][EAF]] (some programs in EAF don't run for me, but that doesn't seem to be a problem)
