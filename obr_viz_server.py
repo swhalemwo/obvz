@@ -73,11 +73,11 @@ def get_edge_point_delta(wd, ht, angle):
             adj, adj_type = -wd/2, 'wd'
             opp = math.tan(-math.pi/2 - angle)*adj
 
-    print('sector: ', sector)
-    print('angle: ', angle)
-    print('dvd_angle: ', round(dvd_angle,2), round(math.degrees(dvd_angle),2))
-    print('adj: ', adj, 'adj_type: ', adj_type)
-    print('opp: ', opp)
+    # print('sector: ', sector)
+    # print('angle: ', angle)
+    # print('dvd_angle: ', round(dvd_angle,2), round(math.degrees(dvd_angle),2))
+    # print('adj: ', adj, 'adj_type: ', adj_type)
+    # print('opp: ', opp)
 
     if adj_type == 'wd':
         dx, dy = adj, opp
@@ -514,6 +514,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
                 distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
                 np.clip(distance, 1, None, out = distance)
 
+                
             # just consider nodes as points at first
             else: 
                 delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
@@ -613,8 +614,6 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         # print('source: ', source, 'target: ', target)
 
-        print(e)
-
         angle = math.atan2((p2x - p1x), (p2y - p1y))
         angle_rev = math.atan2((p1x - p2x), (p1y - p2y))
 
@@ -650,6 +649,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
     def paintEvent(self, event):
         
+        t1 = time()
         node_width = 0
         qp = QPainter(self)
         qp.setRenderHint(QPainter.Antialiasing, True)
@@ -687,7 +687,9 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.width = self.size().width()
         self.height = self.size().height()
         # print(self.width, self.height)
-
+        t2 = time()
+        
+        print('painting took ', t2-t1, ' seconds')
 
 
 if __name__ == "__main__":
@@ -698,28 +700,3 @@ if __name__ == "__main__":
     
 
 
-# * test
-# link_str = "ed -- norma -- secretly dating?;ed -- nadine -- officially together;ed -- james -- uncle;ed -- garage -- owns;norma -- shally -- work tgt bond over marrige problems;norma -- hank -- married;norma -- meals_on_wheels -- coorganized;norma -- cafe -- owns;norma -- ed -- secretly dating?;nadine -- garage -- works at;nadine -- ed -- officially together;log_lady -- laura -- saw_at_night;hank -- josie -- some relation;hank -- norma -- married;bernard -- jacque -- brothres;bernard -- coke -- transport;jacque -- leo -- coke trade partners?;jacque -- bernard -- brothres;josie -- hank -- some relation;josie -- ben_horne -- suspects of hurting her;josie -- cathrin -- suspects of hurting her;josie -- laura -- hires for english;josie -- sawmill -- ownes;josie -- truman -- date;dr_jacobi -- red_corvette_man -- claims to have seen;dr_jacobi -- coke -- also involed with?;dr_jacobi -- johnny -- treats;dr_jacobi -- necklace -- dug out?;dr_jacobi -- laura -- some fucked up relationship;leo -- bernard -- killed?;leo -- red_corvette_man -- is?;leo -- jacque -- coke trade partners?;leo -- coke -- sells;leo -- shally -- married;shally -- norma -- work tgt bond over marrige problems;shally -- cafe -- works_at;shally -- bobbie -- secretly dating;shally -- leo -- married;truman -- james -- hired_for_militia;truman -- ed -- hired_for_police_stuff;truman -- albert -- hits;truman -- josie -- date"
-
-# from scipy.spatial.distance import cosine
-
-# north = (0,1)
-# line = ((p2x - p1x), (p2y - p1y))
-# # angle has to be angle between line between points and and north vector
-# line = (-100, 100)
-
-# if p2x >= p1x and p2y >= p1y: sector = 1
-# elif p2x >= p1x and p2y <= p1y: sector = 2
-# elif p2x <= p1x and p2y <= p1y: sector = 3
-# elif p2x <= p1x and p2y >= p1y: sector = 4
-
-# atan2 tracks sector
-# import numpy as np
-# import numpy.linalg as la
-
-# def py_ang(v1, v2):
-#     """ Returns the angle in radians between vectors 'v1' and 'v2'    """
-#     cosang = np.dot(v1, v2)
-#     # sinang = la.norm(np.cross(v1, v2))
-#     sinang = np.cross(v1, v2)
-#     return np.arctan2(sinang, cosang)
