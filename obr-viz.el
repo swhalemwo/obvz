@@ -79,7 +79,7 @@
 
 
 
-(defun children-specific-depth-letn (node depth)
+(defun children-specific-depth-let (node depth)
     (let ((nodes-upper-level (list node))
 	  (all-nodes (list node))
 	  (all-links ())
@@ -305,7 +305,7 @@
     (setq node-string (mapconcat 'identity uniq-nodes ";"))
     (setq link-string (mapconcat 'identity all-links ";"))
 
-    (print link-string)
+    ;; (print link-string)
 
     ;; can just send multiple things to eaf lol
     ;; maybe good for adding groups later or something
@@ -352,9 +352,37 @@
   (eaf-setq update_check 0)
   (setq update_check_elisp 0)
 
+  
+  (eaf-setq links (obr-viz))
+  (eaf-setq update_check 0)
+  ;; (eaf-setq cur_node (org-brain-entry-at-pt))
+  (setq update_check_elisp 0)
+
   (eaf-open "eaf-obr-test" "obr-test")
-  (eaf--send-var-to-python)
+
+  ;; (eaf--send-var-to-python)
   )
+
+
+(defun eaf-obr-test2 ()
+  "Open EAF demo screen to verify that EAF is working properly."
+  (interactive)
+  (eaf-setq update_check 0)
+  (setq update_check_elisp 0)
+
+    (eaf-setq links (obr-viz))
+  (eaf-setq update_check 0)
+  ;; (eaf-setq cur_node (org-brain-entry-at-pt))
+  (setq update_check_elisp 0)
+
+  ;; (eaf--send-var-to-python)
+  )
+
+
+
+
+;; send_to_python seems to be called now automatically through eaf-setq
+;; 
 
 (define-key org-brain-visualize-mode-map "G" 'obr-viz)
 (define-key org-brain-visualize-mode-map "R" 'obr-viz-redraw)
@@ -378,8 +406,37 @@
 
 (setq sock (zmq-socket (zmq-context) zmq-PUB))
 (zmq-bind sock "tcp://127.0.0.1:5556")
-(zmq-send sock (obr-viz))
 
 
-(zmq-send-encoded sock "iidmm")
+
+
+(setq time-most-recent-vcall 0)
+(defun obr-viz-call ()
+    "only call obr-viz if it has not been called in last 1.2 seconds, 
+should be changed to not work on time but on changed configuration tho"
+    (setq time-now (float-time))
+    (setq time-since-last-call (- time-now time-most-recent-vcall))
+    (message (number-to-string time-since-last-call))
+    (if (> time-since-last-call 1.2)
+	    (progn
+		(update-obr-viz)
+		(setq time-most-recent-vcall time-now)
+		)
+	)
+    )
+	  
+    
+(add-hook 'org-brain-after-visualize-hook 'obr-viz-call)
+
+
+;; (setq testctr 0)
+
+;; (defun test-funx ()
+;;     (setq testctr (1+ testctr))
+;;     )
+
+
+;; (add-hook 'org-brain-visualize-text-hook 'test-funx)
+;; (remove-hook 'org-brain-visualize-text-hook 'test-funx)
+
 
