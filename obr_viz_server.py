@@ -256,6 +256,21 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.paint_timer.start()
 
 
+    def reset(self):
+        self.adj = [] # adjacency list? 
+        self.node_names = []
+        self.link_str = ""
+        self.links = []
+        self.tpls = []
+        self.vd = {}
+        self.vdr = {}
+        
+        self.qt_coords = np.array([])
+        self.dim_ar = np.array([])
+
+        self.g = nx.DiGraph()
+        self.update()
+
     
     def signal_received(self, new_graph_str):
         print('signal receiving')
@@ -272,10 +287,11 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         else:
             self.cur_node = new_graph_dict['cur_node']
 
-            # self.update_graph(new_link_str)
+            if new_graph_dict['links'] == None:
+                self.reset()
 
             # modify graph, recalculate positions if graph has changed
-            if self.link_str != new_graph_dict['links']:
+            if self.link_str != new_graph_dict['links'] and new_graph_dict['links'] != None:
                 print('graph has changed')
                 self.update_graph(new_graph_dict['links'])
                 self.link_str = new_graph_dict['links']
@@ -487,16 +503,16 @@ class ZeroMQ_Window(QtWidgets.QWidget):
                                     self.g.nodes[i]['width'], self.g.nodes[i]['height']])
             sqs.append(sqx)
 
-            
         pos = np.concatenate(sqs)
+
         pos = pos.astype('float64')
-        
+
         # get row_order
         row_order = get_point_mat_reorder_order(len(self.g.nodes))
-        
+
         nbr_nds = A.shape[0]
         nbr_pts = pos.shape[0]
-        
+
         self.dim_ar = np.array([[self.g.nodes[i]['width'], self.g.nodes[i]['height']] for i in self.g.nodes])
         dim_ar2 = self.dim_ar.astype('float64')
         t1 = time()
@@ -507,22 +523,22 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         pos_nds = pythran_res[0]
 
-        
+
         t2 = time()
         print('calculated layout in ' + str(t2-t1) + 'seconds with ' + str(ctr) + ' iterations')
 
         # base_pos_ar = np.array([(g.nodes[i]['x'],g.nodes[i]['y']) for i in g.nodes])
-        
+
         # self.goal_vp = sfdp_layout(self.g, K=0.5, pos=self.pos_vp, **set_dict)
         # self.goal_vp = fruchterman_reingold_layout(self.g, pos = self.pos_vp)
 
         self.chng_ar = (pos_nds - self.base_pos_ar)/self.step
-        
+
         # re-assign back to graph, just do once at end
         for i in zip(self.g.nodes, pos_nds):
             self.g.nodes[i[0]]['x'] = i[1][0]
             self.g.nodes[i[0]]['y'] = i[1][1]
-            
+
 
         # self.rwr_c = self.step
         # print("base_pos_ar: ", self.base_pos_ar)
