@@ -1,6 +1,8 @@
 import time
 import zmq
 
+import json
+
 from PyQt5.QtWidgets import QPushButton, QApplication, QWidget
 from PyQt5.QtCore import QTimer, Qt, QObject
 from PyQt5 import QtCore, QtWidgets, QtGui
@@ -202,7 +204,9 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.dt = self.init_t/(self.def_itr) # delta temperature, (int) sets number of iterations
         self.rep_nd_brd_start = 0.3 # relative size of end time frame in which node borders become repellant
         self.k = 30.0 # desired distance? 
-        self.step = 30.0 # how many steps realignment takes
+        self.step = 6.0 # how many steps realignment takes
+        self.update_interval = 40
+        
 
         self.adj = [] # adjacency list? 
         self.node_names = []
@@ -222,7 +226,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.zeromq_listener.moveToThread(self.thread)
         self.thread.started.connect(self.zeromq_listener.loop)
         self.ctr = 0
-        self.paint_timer = QtCore.QTimer(self, timeout=self.timer_func, interval=30)
+        self.paint_timer = QtCore.QTimer(self, timeout=self.timer_func, interval=self.update_interval)
         
         self.zeromq_listener.message.connect(self.signal_received)
 
@@ -235,17 +239,34 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.show()
 
     
-    def signal_received(self, new_link_str):
+    def signal_received(self, new_graph_str):
         print('signal receiving')
 
         # main parsing/updates has to happen here
-        self.update_graph(new_link_str)
 
-        self.paint_timer.start()
 
+        
+        new_graph_dict = json.loads(new_graph_str)
+        self.cur_node = new_graph_dict['cur_node']
+
+        # self.update_graph(new_link_str)
+        
+        # modify graph, recalculate positions if graph has changed
+        if self.link_str != new_graph_dict['links']:
+            print('graph has changed')
+            self.update_graph(new_graph_dict['links'])
+            self.link_str = new_graph_dict['links']
+            self.paint_timer.start()
+
+        # no change: just make sure redrawing is done to take cur_node into account
+        else:
+            print('graph is same')
+            self.update()
         # print(new_link_str)
 
-    def update_graph(self, new_link_str):
+    # def update_graph(self, new_link_str):
+    def update_graph(self, new_links):
+        
         """set new links and nodes"""
 
         # need clear names: 
@@ -254,9 +275,9 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # "add": existing in new, not in old
         # "del": in old, not in new
 
-        new_links = new_link_str.split(";")
+        # new_links = new_link_str.split(";")
         new_tpls = [(i.split(" -- ")[0], i.split(" -- ")[1]) for i in new_links]
-
+        
         tpls_to_add = list(set(new_tpls) - set(self.tpls))
         tpls_to_del = list(set(self.tpls) - set(new_tpls))
         
@@ -302,8 +323,6 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         
         index_pos = len(self.g.nodes)
-        # vd = {}
-        # vdr = {}
 
         for n in nodes_to_add:
             print('adding node')
@@ -320,7 +339,6 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         # del_node_ids = [self.vd[i] for i in nodes_to_del]
         # self.g.remove_vertex(del_node_ids)
-        
         
         self.g.remove_nodes_from(nodes_to_del)
         print('nodes deleted')
@@ -368,11 +386,11 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         #         self.g.remove_edge(n0, n1)
 
         # tpls_to_del = [(i.split(" -- ")[0], i.split(" -- ")[1]) for i in links_to_del]
-        print('g edges before deleting: ', self.g.edges)
-        print('nbr nodes: ', len(self.g.nodes), "    nbr edges: ", len(self.g.edges))
+        # print('g edges before deleting: ', self.g.edges)
+        # print('nbr nodes: ', len(self.g.nodes), "    nbr edges: ", len(self.g.edges))
         self.g.remove_edges_from(tpls_to_del)
-        print('g edges after deleting: ', self.g.edges)
-        print('nbr nodes: ', len(self.g.nodes), "    nbr edges: ", len(self.g.edges))
+        # print('g edges after deleting: ', self.g.edges)
+        # print('nbr nodes: ', len(self.g.nodes), "    nbr edges: ", len(self.g.edges))
         
         print('graph modifications done')
         print('directedness: ', self.g.is_directed())
@@ -392,16 +410,16 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # add coords for some new nodes
 
         for n in nodes_to_add:
-            print('set new position')
-            print('neighbors: ', set(self.g.neighbors(n)))
-            print('nodes to add: ', nodes_to_add)
+            print('set new position of ', n)
+            # print('neighbors: ', set(self.g.neighbors(n)))
+            # print('nodes to add: ', nodes_to_add)
 
             node_rect = fm.boundingRect(n)
             node_sz = (node_rect.width() + self.wd_pad*2, node_rect.height())
             
             v_prnts = list(set(self.g.neighbors(n)) - set(nodes_to_add))
-            print('node: ', n)
-            print('pob prnts: ', v_prnts)
+            # print('node: ', n)
+            # print('pob prnts: ', v_prnts)
             if len(v_prnts) > 0:
                 self.g.nodes[n]['x'] = self.g.nodes[v_prnts[0]]['x']
                 self.g.nodes[n]['y'] = self.g.nodes[v_prnts[0]]['y']
@@ -424,17 +442,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # adj = np.array([(vd[e[0]], vd[e[1]]) for e in g.edges()])
 
         
-        # self.node_names = [self.g_id[i] for i in self.g.vertices()]
         self.node_names = [i for i in self.g.nodes()]
-        
-        # node_names = [i for i in g.nodes()]
-
-
-        # dumper(['storage objects updated'])
-
-        # dumper(["nbr_edges new: ", str(len([i for i in self.g.edges()]))])
-        # dumper(['nodes_to_add'] + nodes_to_add)
-        # seems to work
         
         self.width = self.size().width()
         self.height = self.size().height()
@@ -463,18 +471,11 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         
         # get corner points pos
         
-
         sqs = []
         for i in self.g.nodes():
             sqx = rect_points([self.g.nodes[i]['x'], self.g.nodes[i]['y'], 
                                     self.g.nodes[i]['width'], self.g.nodes[i]['height']])
             sqs.append(sqx)
-
-        # sqs = []
-        # for i in g.nodes():
-        #     sqx = rect_points([g.nodes[i]['x'], g.nodes[i]['y'], 
-        #                        g.nodes[i]['width'], g.nodes[i]['height']])
-        #     sqs.append(sqx)
 
             
         pos = np.concatenate(sqs)
@@ -496,77 +497,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         pos_nds = pythran_res[0]
 
-        # while True:
-        #     # avoid node overlap at end
-        #     if self.t < self.dt * self.def_itr * self.rep_nd_brd_start :
-        #         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
-                
-        #         x_ovlp, dx_min = get_dim_ovlp(pos[:,0], row_order)
-        #         y_ovlp, dy_min = get_dim_ovlp(pos[:,1], row_order)
-                
-        #         both_ovlp = x_ovlp * y_ovlp
-        #         x_ovlp2 = x_ovlp - both_ovlp
-        #         y_ovlp2 = y_ovlp - both_ovlp
-
-        #         none_ovlp = np.ones((nbr_nds, nbr_nds)) - both_ovlp - x_ovlp2 - y_ovlp2
-
-        #         # also have to get the point distances for none_ovlp (then shortest)
-        #         delta_pts = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
-        #         dist_pts = np.linalg.norm(delta_pts, axis=-1)
-                
-        #         dist_rshp = np.reshape(dist_pts, (int((nbr_pts**2)/4), 4))
-        #         dist_rshp_rord = dist_rshp[row_order]
-        #         dist_rord = np.reshape(dist_rshp_rord, (nbr_nds, nbr_nds, 16))
-        #         min_pt_dists = np.min(dist_rord, axis = 2)
-                
-        #         distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
-        #         np.clip(distance, 1, None, out = distance)
-
-                
-        #     # just consider nodes as points at first
-        #     else: 
-        #         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
-        #         distance = np.linalg.norm(delta_nds, axis=-1)
-        #         np.clip(distance, 1, None, out = distance)
-            
-            
-        #     # update points
-        #     displacement = np.einsum('ijk,ij->ik',
-        #                              delta_nds,
-        #                              (self.k * self.k / distance**2) - A * distance / self.k)
-
-        #     # repellant borders
-        #     displacement[:,0] += (self.k*10)**2/(pos_nds[:,0] - self.dim_ar[:,0]/2)**2
-        #     displacement[:,1] += (self.k*10)**2/(pos_nds[:,1] - self.dim_ar[:,1]/2)**2
-        #     displacement[:,0] -= (self.k*10)**2/(self.width - (pos_nds[:,0] + self.dim_ar[:,0]/2))**2
-        #     displacement[:,1] -= (self.k*10)**2/(self.height - (pos_nds[:,1] + self.dim_ar[:,1]/2))**2
-
-        #     length = np.linalg.norm(displacement, axis=-1)
-        #     length = np.where(length < 0.01, 0.1, length)
-        #     delta_pos = np.einsum('ij,i->ij', displacement, self.t / length)
-
-        #     # update node positions
-        #     pos_nds += delta_pos
-        #     # scale delta_pos to corner poitns
-        #     delta_pos_xtnd = np.reshape(np.hstack([delta_pos]*4), (nbr_pts, 2))
-        #     pos += delta_pos_xtnd
-
-            
-        #     if self.t > self.dt * self.def_itr * self.rep_nd_brd_start:
-        #         # self.dt*30:
-        #         self.t -= self.dt
-
-        #     else: 
-        #         # if self.t < self.dt*40:
-        #         # print(np.sum(both_ovlp))
-        #         if np.sum(both_ovlp) == nbr_nds:
-        #             self.t -= self.dt
-
-        #     ctr += 1
-        #     # print('temperature: ', self.t)
-        #     if self.t < 0: 
-        #         break
-
+        
         t2 = time()
         print('calculated layout in ' + str(t2-t1) + 'seconds with ' + str(ctr) + ' iterations')
 
@@ -594,14 +525,28 @@ class ZeroMQ_Window(QtWidgets.QWidget):
     def timer_func(self):
 
         self.qt_coords = self.base_pos_ar + self.chng_ar * self.ctr
+        # print(self.qt_coords)
+        
+        some_node = list(self.g.nodes())[5]
     
-        # print(self.ctr)
+        
+        print('node position in base_pos_ar: ', self.base_pos_ar[5])
+        print('change vector: ', self.chng_ar[5])
+        print('ctr: ', self.ctr)
+        print('some node: ', some_node)
+        print('x: ', self.g.nodes[some_node]['x'], 'y: ', self.g.nodes[some_node]['y'])
+        print("some nodes' position: ", self.qt_coords[5])
+        
+            # print(self.ctr)
 
 
         self.update()
         if self.ctr == self.step:
-            self.paint_timer.stop()
+            
+            self.base_pos_ar = self.qt_coords
+
             self.ctr = 0
+            self.paint_timer.stop()
 
         self.ctr += 1
 
@@ -676,7 +621,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         qp.setPen(QColor(168, 34, 2))
 
-        # qp.setFont(QFont('Decorative', 10))
+
         qp.setFont(QFont('Arial', self.font_size))
         [qp.drawText(t[0][0]-t[1][0]/2+ self.wd_pad, t[0][1] + 5 , t[2]) for t in zip(self.qt_coords, self.dim_ar, self.node_names)]
 
@@ -689,7 +634,12 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         qp.setPen(QPen(Qt.black, 2, Qt.SolidLine))
 
-        for i in zip(self.qt_coords, self.dim_ar):
+        for i in zip(self.qt_coords, self.dim_ar, self.node_names):
+            if self.cur_node == i[2]:
+                qp.setPen(QPen(Qt.black, 3, Qt.SolidLine))
+                qp.drawRect(i[0][0]-i[1][0]/2, i[0][1]- i[1][1]/2, i[1][0], i[1][1])
+                qp.setPen(QPen(Qt.black, 2, Qt.SolidLine))
+            else:
                 qp.drawRect(i[0][0]-i[1][0]/2, i[0][1]- i[1][1]/2, i[1][0], i[1][1])
 
         self.width = self.size().width()
@@ -708,3 +658,75 @@ if __name__ == "__main__":
     
 
 
+# * scrap
+# ** old loop
+# while True:
+#     # avoid node overlap at end
+#     if self.t < self.dt * self.def_itr * self.rep_nd_brd_start :
+#         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
+
+#         x_ovlp, dx_min = get_dim_ovlp(pos[:,0], row_order)
+#         y_ovlp, dy_min = get_dim_ovlp(pos[:,1], row_order)
+
+#         both_ovlp = x_ovlp * y_ovlp
+#         x_ovlp2 = x_ovlp - both_ovlp
+#         y_ovlp2 = y_ovlp - both_ovlp
+
+#         none_ovlp = np.ones((nbr_nds, nbr_nds)) - both_ovlp - x_ovlp2 - y_ovlp2
+
+#         # also have to get the point distances for none_ovlp (then shortest)
+#         delta_pts = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
+#         dist_pts = np.linalg.norm(delta_pts, axis=-1)
+
+#         dist_rshp = np.reshape(dist_pts, (int((nbr_pts**2)/4), 4))
+#         dist_rshp_rord = dist_rshp[row_order]
+#         dist_rord = np.reshape(dist_rshp_rord, (nbr_nds, nbr_nds, 16))
+#         min_pt_dists = np.min(dist_rord, axis = 2)
+
+#         distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
+#         np.clip(distance, 1, None, out = distance)
+
+
+#     # just consider nodes as points at first
+#     else: 
+#         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
+#         distance = np.linalg.norm(delta_nds, axis=-1)
+#         np.clip(distance, 1, None, out = distance)
+
+
+#     # update points
+#     displacement = np.einsum('ijk,ij->ik',
+#                              delta_nds,
+#                              (self.k * self.k / distance**2) - A * distance / self.k)
+
+#     # repellant borders
+#     displacement[:,0] += (self.k*10)**2/(pos_nds[:,0] - self.dim_ar[:,0]/2)**2
+#     displacement[:,1] += (self.k*10)**2/(pos_nds[:,1] - self.dim_ar[:,1]/2)**2
+#     displacement[:,0] -= (self.k*10)**2/(self.width - (pos_nds[:,0] + self.dim_ar[:,0]/2))**2
+#     displacement[:,1] -= (self.k*10)**2/(self.height - (pos_nds[:,1] + self.dim_ar[:,1]/2))**2
+
+#     length = np.linalg.norm(displacement, axis=-1)
+#     length = np.where(length < 0.01, 0.1, length)
+#     delta_pos = np.einsum('ij,i->ij', displacement, self.t / length)
+
+#     # update node positions
+#     pos_nds += delta_pos
+#     # scale delta_pos to corner poitns
+#     delta_pos_xtnd = np.reshape(np.hstack([delta_pos]*4), (nbr_pts, 2))
+#     pos += delta_pos_xtnd
+
+
+#     if self.t > self.dt * self.def_itr * self.rep_nd_brd_start:
+#         # self.dt*30:
+#         self.t -= self.dt
+
+#     else: 
+#         # if self.t < self.dt*40:
+#         # print(np.sum(both_ovlp))
+#         if np.sum(both_ovlp) == nbr_nds:
+#             self.t -= self.dt
+
+#     ctr += 1
+#     # print('temperature: ', self.t)
+#     if self.t < 0: 
+#         break
