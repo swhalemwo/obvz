@@ -407,22 +407,34 @@
 (setq sock (zmq-socket (zmq-context) zmq-PUB))
 (zmq-bind sock "tcp://127.0.0.1:5556")
 
-
+(defun update-obr-viz ()
+    (zmq-send sock
+	      (obr-viz))
+    )
 
 
 (setq time-most-recent-vcall 0)
+(setq most-recent-config "")
+
+
+
 (defun obr-viz-call ()
     "only call obr-viz if it has not been called in last 1.2 seconds, 
 should be changed to not work on time but on changed configuration tho"
-    (setq time-now (float-time))
-    (setq time-since-last-call (- time-now time-most-recent-vcall))
-    (message (number-to-string time-since-last-call))
-    (if (> time-since-last-call 1.2)
+
+    (setq current-pins (mapconcat 'identity org-brain-pins ";"))
+    (setq current-config (concat current-pins ";" (org-brain-entry-at-pt)))
+
+    (if (not (equal current-config most-recent-config))
 	    (progn
+		(setq current-pins (mapconcat 'identity org-brain-pins ";"))
+		(setq most-recent-config (concat current-pins ";" (org-brain-entry-at-pt)))
+		
+		(message (concat (number-to-string (float-time)) current-config))
 		(update-obr-viz)
-		(setq time-most-recent-vcall time-now)
 		)
 	)
+	
     )
 	  
     
