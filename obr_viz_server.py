@@ -427,9 +427,9 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             node_rect = fm.boundingRect(n)
             node_sz = (node_rect.width() + self.wd_pad*2, node_rect.height())
             
-            v_prnts = list(set(self.g.neighbors(n)) - set(nodes_to_add))
+            v_prnts = list(set(self.g.predecessors(n)) - set(nodes_to_add))
             # print('node: ', n)
-            # print('pob prnts: ', v_prnts)
+            print('pob prnts: ', v_prnts)
             if len(v_prnts) > 0:
                 self.g.nodes[n]['x'] = self.g.nodes[v_prnts[0]]['x']
                 self.g.nodes[n]['y'] = self.g.nodes[v_prnts[0]]['y']
