@@ -305,6 +305,14 @@
     (setq node-string (mapconcat 'identity uniq-nodes ";"))
     (setq link-string (mapconcat 'identity all-links ";"))
 
+    (setq graph-dict
+	  `(("links" . ,all-links)
+	    ("cur_node" . ,(org-brain-entry-at-pt))
+	    )
+	  )
+    graph-dict
+    
+
     ;; (print link-string)
 
     ;; can just send multiple things to eaf lol
@@ -330,21 +338,21 @@
 ;; watch -n 1 tail file
 
 
-(defun obr-viz-redraw()
-    (interactive)
-    """reload current edge list"""
+;; (defun obr-viz-redraw()
+;;     (interactive)
+;;     """reload current edge list"""
     
-    (eaf-setq update_check 1)
-    (setq update_check_elisp 1)
-    (eaf--send-var-to-python)
+;;     (eaf-setq update_check 1)
+;;     (setq update_check_elisp 1)
+;;     (eaf--send-var-to-python)
 
-    (while (eq update_check_elisp 1)
-	(sit-for 0.01)
-	)
-    (eaf-setq update_check 0)
-    (eaf--send-var-to-python)
-    (setq update_check_elisp 0)
-    )
+;;     (while (eq update_check_elisp 1)
+;; 	(sit-for 0.01)
+;; 	)
+;;     (eaf-setq update_check 0)
+;;     (eaf--send-var-to-python)
+;;     (setq update_check_elisp 0)
+;;     )
 
 (defun eaf-obr-test ()
   "Open EAF demo screen to verify that EAF is working properly."
@@ -389,6 +397,18 @@
 
 
 
+(defun update-obr-viz ()
+    ;; (zmq-send sock (obr-viz))
+    (message (number-to-string (float-time)))
+    (setq current-config (obr-viz))
+    (if (not (equal current-config most-recent-config))
+	    (progn
+		(setq most-recent-config current-config)
+		(zmq-send sock (json-encode-alist current-config))
+		)
+	)
+    )
+
 
 
 
@@ -406,39 +426,30 @@
 
 (setq sock (zmq-socket (zmq-context) zmq-PUB))
 (zmq-bind sock "tcp://127.0.0.1:5556")
+(setq most-recent-config ())
 
-(defun update-obr-viz ()
-    (zmq-send sock
-	      (obr-viz))
-    )
+(add-hook 'org-brain-after-visualize-hook 'update-obr-viz)
 
 
-(setq time-most-recent-vcall 0)
-(setq most-recent-config "")
-
-
-
-(defun obr-viz-call ()
-    "only call obr-viz if it has not been called in last 1.2 seconds, 
-should be changed to not work on time but on changed configuration tho"
-
-    (setq current-pins (mapconcat 'identity org-brain-pins ";"))
-    (setq current-config (concat current-pins ";" (org-brain-entry-at-pt)))
-
-    (if (not (equal current-config most-recent-config))
-	    (progn
-		(setq current-pins (mapconcat 'identity org-brain-pins ";"))
-		(setq most-recent-config (concat current-pins ";" (org-brain-entry-at-pt)))
-		
-		(message (concat (number-to-string (float-time)) current-config))
-		(update-obr-viz)
-		)
+(defun obr-viz-redraw()
+    "redraw layout, either soft (apply forces to current layout) or hard (from random starting positions)"
+    (interactive)
+    (if (equal current-prefix-arg nil)
+	    (setq redraw-alist '(("redraw" . "soft")))
+	(setq redraw-alist '(("redraw" . "hard")))
 	)
-	
+    (zmq-send sock (json-encode-alist redraw-alist))
     )
-	  
+
     
-(add-hook 'org-brain-after-visualize-hook 'obr-viz-call)
+
+
+;; (remove-hook 'org-brain-after-visualize-hook 'update-obr-viz)
+;; (remove-hook 'org-brain-after-visualize-hook 'test-f)
+
+
+;; (add-hook 'org-brain-after-visualize-hook 'obr-viz-call)
+;; (remove-hook 'org-brain-after-visualize-hook 'obr-viz-call)
 
 
 ;; (setq testctr 0)
@@ -449,6 +460,26 @@ should be changed to not work on time but on changed configuration tho"
 
 
 ;; (add-hook 'org-brain-visualize-text-hook 'test-funx)
-;; (remove-hook 'org-brain-visualize-text-hook 'test-funx)
+;; (remove-hook 'org-brain-visualize-text-hook 'obr-viz-call)
+;; (remove-hook 'org-brain-visualize-text-hook 'test-f2)
 
 
+
+;; (defun obr-viz-call ()
+;;     "only call obr-viz if it has not been called in last 1.2 seconds, 
+;; should be changed to not work on time but on changed configuration tho"
+
+;;     (setq current-pins (mapconcat 'identity org-brain-pins ";"))
+;;     (setq current-config (concat current-pins ";" (org-brain-entry-at-pt)))
+
+;;     (if (not (equal current-config most-recent-config))
+;; 	    (progn
+;; 		(setq current-pins (mapconcat 'identity org-brain-pins ";"))
+;; 		(setq most-recent-config (concat current-pins ";" (org-brain-entry-at-pt)))
+		
+;; 		(message (concat (number-to-string (float-time)) current-config))
+;; 		(update-obr-viz)
+;; 		)
+;; 	)
+	
+;;     )

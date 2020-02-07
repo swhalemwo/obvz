@@ -239,30 +239,53 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.show()
 
     
+    def redraw_layout(self, cmd):
+        # assign new random positions
+        if cmd == "hard":
+            for n in self.g.nodes():
+                
+                self.g.nodes[n]['x'] = choices(range(self.g.nodes[n]['width'] + 10, self.width - (self.g.nodes[n]['width'] + 10)))[0]
+                self.g.nodes[n]['y'] = choices(range(self.g.nodes[n]['height'] + 10, self.height - (self.g.nodes[n]['height'] + 10)))[0]
+
+        # just apply forces to current layout
+        # do i even need condition? not really i think, condition is based on what calls this function
+        # if cmd == "soft":
+            
+        self.t = self.init_t
+        self.recalculate_layout()
+        self.paint_timer.start()
+
+
+    
     def signal_received(self, new_graph_str):
         print('signal receiving')
 
         # main parsing/updates has to happen here
-
-
         
         new_graph_dict = json.loads(new_graph_str)
-        self.cur_node = new_graph_dict['cur_node']
-
-        # self.update_graph(new_link_str)
-        
-        # modify graph, recalculate positions if graph has changed
-        if self.link_str != new_graph_dict['links']:
-            print('graph has changed')
-            self.update_graph(new_graph_dict['links'])
-            self.link_str = new_graph_dict['links']
-            self.paint_timer.start()
-
-        # no change: just make sure redrawing is done to take cur_node into account
+    
+        # only command is to redraw
+        if list(new_graph_dict.keys())[0] == 'redraw':
+            self.redraw_layout(new_graph_dict['redraw'])
+            
+        # update current node or graph
         else:
-            print('graph is same')
-            self.update()
-        # print(new_link_str)
+            self.cur_node = new_graph_dict['cur_node']
+
+            # self.update_graph(new_link_str)
+
+            # modify graph, recalculate positions if graph has changed
+            if self.link_str != new_graph_dict['links']:
+                print('graph has changed')
+                self.update_graph(new_graph_dict['links'])
+                self.link_str = new_graph_dict['links']
+                self.paint_timer.start()
+
+            # no change: just make sure redrawing is done to take cur_node into account
+            else:
+                print('graph is same')
+                self.update()
+                # print(new_link_str)
 
     # def update_graph(self, new_link_str):
     def update_graph(self, new_links):
@@ -316,12 +339,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         print("nodes_to_del: ", nodes_to_del)
         
         # first add nodes + index them
-        # have to index differently now
-        # int(v) would return index in gt, but nx doesn't have them
-        # needs own index dict
-        # adding: stuff gets added at back -> can just increase
-
-        
+        # actually not clear if vd is needed much
         index_pos = len(self.g.nodes)
 
         for n in nodes_to_add:
@@ -332,14 +350,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             self.vdr[index_pos] = n
             index_pos +=1
 
-            # g.add_node(n)
-            # vd[n] = index_pos
-            # vdr[index_pos] = n
-            # index_pos +=1
 
-        # del_node_ids = [self.vd[i] for i in nodes_to_del]
-        # self.g.remove_vertex(del_node_ids)
-        
         self.g.remove_nodes_from(nodes_to_del)
         print('nodes deleted')
         # have to reindex after deletion
@@ -352,8 +363,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             self.vdr[c] = i
             c += 1
         
-        print(list(self.vd.keys()))
-
+        print(self.vd)
         
         print('nodes deleted')
         # nodes_to_del_id = 
@@ -527,15 +537,13 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.qt_coords = self.base_pos_ar + self.chng_ar * self.ctr
         # print(self.qt_coords)
         
-        some_node = list(self.g.nodes())[5]
-    
-        
-        print('node position in base_pos_ar: ', self.base_pos_ar[5])
-        print('change vector: ', self.chng_ar[5])
-        print('ctr: ', self.ctr)
-        print('some node: ', some_node)
-        print('x: ', self.g.nodes[some_node]['x'], 'y: ', self.g.nodes[some_node]['y'])
-        print("some nodes' position: ", self.qt_coords[5])
+        # some_node = list(self.g.nodes())[5]
+        # print('node position in base_pos_ar: ', self.base_pos_ar[5])
+        # print('change vector: ', self.chng_ar[5])
+        # print('ctr: ', self.ctr)
+        # print('some node: ', some_node)
+        # print('x: ', self.g.nodes[some_node]['x'], 'y: ', self.g.nodes[some_node]['y'])
+        # print("some nodes' position: ", self.qt_coords[5])
         
             # print(self.ctr)
 
