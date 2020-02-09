@@ -320,7 +320,10 @@
     (setq link-string (mapconcat 'identity all-links ";"))
 
     (setq node-texts (mapcar 'org-brain-text uniq-nodes))
-    (setq node-text-alist (mapcar* #'cons uniq-nodes node-texts))
+    (if (equal include-node-texts t)
+	(setq node-text-alist (mapcar* #'cons uniq-nodes node-texts))
+	(setq node-text-alist (mapcar* #'cons uniq-nodes (make-list (len uniq-nodes) "")))
+	)
 
 
     (setq graph-dict
@@ -356,6 +359,23 @@
     ;; (node . (org-brain-text node))
     (org-brain-text node)
     )
+
+(defun switch-node-text-inclusion()
+    (interactive)
+    (if (equal include-node-texts t)
+	    (setq include-node-texts nil)
+	(setq include-node-texts t)
+	)
+    (update-obr-viz)
+    )
+
+(define-key org-brain-visualize-mode-map "N" 'switch-node-text-inclusion)
+
+	    
+	    
+	
+
+(setq include-node-texts t)
 
 
 
@@ -434,7 +454,7 @@
 ;; send_to_python seems to be called now automatically through eaf-setq
 ;; 
 
-(define-key org-brain-visualize-mode-map "G" 'obr-viz)
+;; (define-key org-brain-visualize-mode-map "G" 'obr-viz)
 (define-key org-brain-visualize-mode-map "R" 'obr-viz-redraw)
 
 
