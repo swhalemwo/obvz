@@ -220,6 +220,7 @@
     (setq nodes-backup nodes)
 
     (setq friend-links ())
+    (setq friend-nodes ())
 
     (while nodes
 	(setq node (car nodes))
@@ -229,7 +230,10 @@
 	    
 	    (setq edge-annot (org-brain-get-edge-annotation node friend))
 	    (if (not (equal edge-annot nil))
-		    (push (concat node " -- " friend " -- " edge-annot) friend-links)
+		    (progn
+			(push (concat node " -- " friend " -- " edge-annot) friend-links)
+			(push friend friend-nodes)
+			)
 		)
 
 	    ;; check alphabetic order to avoid duplicates
@@ -249,7 +253,12 @@
 	    )
 	(setq nodes (cdr nodes))
 	)
-    friend-links
+
+    (setq res())
+    (push friend-links res)
+    (push friend-nodes res)
+    ;; friend-links
+    res
     )
 
 	
@@ -295,19 +304,29 @@
     (setq uniq-nodes-prep (counter (flatten-list total-nodes)))
     (setq uniq-nodes (mapcar 'car uniq-nodes-prep))
 
-
-    (setq friend-links (get-friend-links uniq-nodes))
-
+    ;; handle links
+    (setq friend-res (get-friend-links uniq-nodes))
+    (setq friend-links (cdr friend-res))
     (push friend-links total-links)
+
+    ;; handle nodes
+    (setq friend-nodes (car friend-res))
+    (setq uniq-nodes (remove-duplicates (flatten-list (list uniq-nodes friend-nodes))))
+
 
     (setq all-links (flatten-list total-links))
 
     (setq node-string (mapconcat 'identity uniq-nodes ";"))
     (setq link-string (mapconcat 'identity all-links ";"))
 
+    (setq node-texts (mapcar 'org-brain-text uniq-nodes))
+    (setq node-text-alist (mapcar* #'cons uniq-nodes node-texts))
+
+
     (setq graph-dict
 	  `(("links" . ,all-links)
 	    ("cur_node" . ,(org-brain-entry-at-pt))
+	    ("node_texts" . ,node-text-alist)
 	    )
 	  )
     graph-dict
@@ -329,6 +348,29 @@
 
     )
     
+;; data structure: dict with key node, value text
+;; is itself dict in graph_dict
+
+
+(defun obvz-text-getter(node)
+    ;; (node . (org-brain-text node))
+    (org-brain-text node)
+    )
+
+
+
+;; (mapcar* #'cons '(1 2 3) '(a b c))
+
+;; (mapcar 'obvz-text-getter uniq-nodes)
+
+;; (mapcar (lambda(node)
+;; 	    (funcall #'obvz-text-getter node)) uniq-nodes)
+
+;; (mapcar (lambda (package)
+;;           (funcall #'toy-fnx (car package) (cdr package)))
+;;         packages)
+
+
 
 ;; (setq all-string (mapconcat 'identity node-string link-string ""))
 
