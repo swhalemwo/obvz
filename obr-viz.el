@@ -173,10 +173,12 @@
 
 (define-key org-brain-visualize-mode-map "N" 'switch-node-text-inclusion)
 (define-key org-brain-visualize-mode-map "R" 'obr-viz-redraw)
+(define-key org-brain-visualize-mode-map "U" 'update-obr-viz)
 
 
 
 (defun update-obr-viz ()
+    (interactive)
     ;; (zmq-send sock (obr-viz))
     (message (number-to-string (float-time)))
     (setq current-config (obr-viz))
