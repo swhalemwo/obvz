@@ -1,4 +1,4 @@
-import time
+import time 
 import zmq
 
 import json
@@ -8,6 +8,7 @@ from PyQt5.QtCore import QTimer, Qt, QObject
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont, QFontMetrics
 from sklearn.metrics.pairwise import euclidean_distances
+
 
 from time import sleep, time
 from scipy.spatial import distance as dist
@@ -211,6 +212,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.adj = [] # adjacency list? 
         self.node_names = []
         self.link_str = ""
+        self.node_texts = {}
         self.links = []
         self.tpls = []
         self.vd = {}
@@ -260,6 +262,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.adj = [] # adjacency list? 
         self.node_names = []
         self.link_str = ""
+        self.node_texts = {}
         self.links = []
         self.tpls = []
         self.vd = {}
@@ -274,9 +277,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
     
     def signal_received(self, new_graph_str):
         print('signal receiving')
-
         # main parsing/updates has to happen here
-        
         new_graph_dict = json.loads(new_graph_str)
     
         # only command is to redraw
@@ -284,26 +285,103 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             self.redraw_layout(new_graph_dict['redraw'])
             
         # update current node or graph
+        # links and node texts as separate things
         else:
             self.cur_node = new_graph_dict['cur_node']
-
+            # self.node_texts = new_graph_dict['node_texts']
+            
             if new_graph_dict['links'] == None:
                 self.reset()
 
-            # modify graph, recalculate positions if graph has changed
+            update_me = 0
+            # check if graph structure has changed
             if self.link_str != new_graph_dict['links'] and new_graph_dict['links'] != None:
                 print('graph has changed')
                 self.update_graph(new_graph_dict['links'])
                 self.link_str = new_graph_dict['links']
-                self.paint_timer.start()
+                update_me = 1
 
+            # check if node texts have been modified
+            if self.node_texts != new_graph_dict['node_texts'] and new_graph_dict['node_texts'] != None:
+                print('node texts have changed')
+                self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])
+                self.node_texts = new_graph_dict['node_texts']
+                update_me = 1
+
+            # start the layout calculations from here
+            if update_me == 1:
+                self.recalculate_layout()
+                self.paint_timer.start()
+            
+                
             # no change: just make sure redrawing is done to take cur_node into account
-            else:
-                print('graph is same')
+            # if self.link_str == new_graph_dict['links'] and new_graph_dict['node_texts'] == self.node_texts:
+            if update_me == 0:
+                print('graph is same, just update current node')
                 self.update()
                 # print(new_link_str)
 
     # def update_graph(self, new_link_str):
+
+
+    def get_node_text_dimensions(self, fm_nt, node_text):
+        
+        # n = 'bobbie'
+        # node_text = new_graph_dict['node_texts'][n]
+        # font = QFont("Arial", 10)
+        # fm_nt = QFontMetrics(font) # font metric node text
+        # ---------- test values end ----------
+        
+        # maybe implement some wrapping of long lines
+        # but would have to determine where to wrap them, might be not straightforward with long lines
+
+        node_text_lines = [i for i in node_text.split('\n') if len(i) > 0]
+                
+        node_rects = [fm_nt.boundingRect(i) for i in node_text_lines]
+        widths = [i.width() for i in node_rects]
+        heights = [i.height() for i in node_rects]
+
+        return(widths, heights)
+
+
+    def set_node_wd_ht(self, nodes_to_recalc_dims, node_text_dict):
+        """set height and width attributes based on text properties"""
+        # hm should it be so general that i don't have to run it every time? 
+        # question is if i recalculate all node properties if graph changes
+        # depends on how expensive it is
+        # either way should avoid multiple instantiations of fm_nt
+        # also need to split up position assignment and height/width calculation 
+        
+        print('setting attributes')
+
+        font = ImageFont.truetype('Arial', self.font_size)
+        
+        # font = QFont("Arial", 12)
+        font = QFont("Arial", self.font_size)
+        fm = QFontMetrics(font)
+
+
+        font = QFont("Arial", 10)
+        fm_nt = QFontMetrics(font) # font metric node text
+
+
+        for n in nodes_to_recalc_dims:
+            node_rect = fm.boundingRect(n)
+            nd_title_wd, nd_title_ht = node_rect.width(), node_rect.height()
+            
+            nt_dims = self.get_node_text_dimensions(fm_nt, node_text_dict[n])
+            nt_dims[0].append(nd_title_wd)
+            nt_dims[1].append(nd_title_ht)
+
+            # node_sz = (node_rect.width() + self.wd_pad*2, node_rect.height())
+            # self.g.nodes[n]['width'] = node_sz[0]
+            # self.g.nodes[n]['height'] = node_sz[1]
+
+            self.g.nodes[n]['width'] = max(nt_dims[0]) + self.wd_pad*2
+            self.g.nodes[n]['height'] = sum(nt_dims[1])
+
+
+
     def update_graph(self, new_links):
         
         """set new links and nodes"""
@@ -366,7 +444,6 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             self.vdr[index_pos] = n
             index_pos +=1
 
-
         self.g.remove_nodes_from(nodes_to_del)
         print('nodes deleted')
         # have to reindex after deletion
@@ -390,92 +467,58 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             n0,n1 = tpl[0], tpl[1]
             self.g.add_edge(n0, n1)
 
-        # for l in links_to_add:
-        #     tpl = l.split(" -- ")
-        #     n0,n1 = tpl[0], tpl[1]
-        #     g.add_edge(n0, n1)
-
-        # dumper(['new links added, delete old links'])
-
-        # print('nbr links to del: ' + str(len(links_to_del)))
-        # print('nbr unq links to del: ' + str(len(list(set(links_to_del)))))
-
-        # for l in set(links_to_del):
-        #     tpl = l.split(" -- ")
-        #     n0, n1 = tpl[0], tpl[1]
-        #     print('delete edge between ' + n0 + ' and ' + n1)
-        #     # print(self.g.nodes)
-        #     # print(self.g.edges)
-        #     # only remove edge when neither of nodes removed
-        #     if n0 in self.vd.keys() and n1 in self.vd.keys():
-        #         # self.g.remove_edge(self.g.edge(self.vd[n0], self.vd[n1]))
-        #         self.g.remove_edge(n0, n1)
-
-        # tpls_to_del = [(i.split(" -- ")[0], i.split(" -- ")[1]) for i in links_to_del]
-        # print('g edges before deleting: ', self.g.edges)
-        # print('nbr nodes: ', len(self.g.nodes), "    nbr edges: ", len(self.g.edges))
         self.g.remove_edges_from(tpls_to_del)
         # print('g edges after deleting: ', self.g.edges)
         # print('nbr nodes: ', len(self.g.nodes), "    nbr edges: ", len(self.g.edges))
         
         print('graph modifications done')
-        print('directedness: ', self.g.is_directed())
-        # set positions of new nodes to parent nodes
-        # for n in nodes_to_add:
-        #     v = self.g.vertex(self.vd[n])
-        #     v_prnt = list(v.all_neighbors())[0]
-        #     self.pos_vp[v] = self.pos_vp[v_prnt]
-            
-        print('setting attributes')
-        # if all is new: random assignment:
-        font = ImageFont.truetype('Arial', self.font_size)
-        
-        font = QFont("Arial", self.font_size)
-        fm = QFontMetrics(font)
-        
-        # add coords for some new nodes
+                
+        self.adj = np.array([(self.vd[e[0]], self.vd[e[1]]) for e in self.g.edges()])
+        self.node_names = [i for i in self.g.nodes()]
 
+        self.set_node_positions(nodes_to_add)
+
+            
+
+    def set_node_positions(self, nodes_to_add):
+        """set positions of new nodes"""
+        
         for n in nodes_to_add:
             print('set new position of ', n)
             # print('neighbors: ', set(self.g.neighbors(n)))
             # print('nodes to add: ', nodes_to_add)
 
-            node_rect = fm.boundingRect(n)
-            node_sz = (node_rect.width() + self.wd_pad*2, node_rect.height())
+
+            # node_rect = fm.boundingRect(n)
+            # node_sz = (node_rect.width() + self.wd_pad*2, node_rect.height())
             
             v_prnts = list(set(self.g.predecessors(n)) - set(nodes_to_add))
             # print('node: ', n)
-            print('pob prnts: ', v_prnts)
+            print('node prnts: ', v_prnts)
             if len(v_prnts) > 0:
                 self.g.nodes[n]['x'] = self.g.nodes[v_prnts[0]]['x']
                 self.g.nodes[n]['y'] = self.g.nodes[v_prnts[0]]['y']
             else:
-                self.g.nodes[n]['x'] = choices(range(node_sz[0] + 10, self.width - (node_sz[0] + 10)))[0]
-                self.g.nodes[n]['y'] = choices(range(node_sz[1] + 10, self.height - (node_sz[1] + 10)))[0]
+                # if all is new: random assignment:
+                
+                self.g.nodes[n]['x'] = choices(range(100, self.width - 100))[0]
+                self.g.nodes[n]['y'] = choices(range(100, self.height - 100))[0]
+                
+                # self.g.nodes[n]['x'] = choices(range(node_sz[0] + 10, self.width - (node_sz[0] + 10)))[0]
+                # self.g.nodes[n]['y'] = choices(range(node_sz[1] + 10, self.height - (node_sz[1] + 10)))[0]
 
+            # self.g.nodes[n]['width'] = node_sz[0]
+            # self.g.nodes[n]['height'] = node_sz[1]
 
-            self.g.nodes[n]['width'] = node_sz[0]
-            self.g.nodes[n]['height'] = node_sz[1]
-
-        # for i in self.g.nodes:
-        #     print(i, self.g.nodes[i])
-        
         
         print('node positions adjusted')
-        
-        # self.adj = np.array([(int(i.source()), int(i.target())) for i in self.g.edges()])
-        self.adj = np.array([(self.vd[e[0]], self.vd[e[1]]) for e in self.g.edges()])
-        # adj = np.array([(vd[e[0]], vd[e[1]]) for e in g.edges()])
-
-        
-        self.node_names = [i for i in self.g.nodes()]
         
         self.width = self.size().width()
         self.height = self.size().height()
         # print(self.width, self.height)
 
         self.t = self.init_t
-        self.recalculate_layout()
+        # self.recalculate_layout()
         # print('to here2')
         # print(self.g.nodes)
 
@@ -683,74 +726,6 @@ if __name__ == "__main__":
 
 
 # * scrap
-# ** old loop
-# while True:
-#     # avoid node overlap at end
-#     if self.t < self.dt * self.def_itr * self.rep_nd_brd_start :
-#         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
-
-#         x_ovlp, dx_min = get_dim_ovlp(pos[:,0], row_order)
-#         y_ovlp, dy_min = get_dim_ovlp(pos[:,1], row_order)
-
-#         both_ovlp = x_ovlp * y_ovlp
-#         x_ovlp2 = x_ovlp - both_ovlp
-#         y_ovlp2 = y_ovlp - both_ovlp
-
-#         none_ovlp = np.ones((nbr_nds, nbr_nds)) - both_ovlp - x_ovlp2 - y_ovlp2
-
-#         # also have to get the point distances for none_ovlp (then shortest)
-#         delta_pts = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
-#         dist_pts = np.linalg.norm(delta_pts, axis=-1)
-
-#         dist_rshp = np.reshape(dist_pts, (int((nbr_pts**2)/4), 4))
-#         dist_rshp_rord = dist_rshp[row_order]
-#         dist_rord = np.reshape(dist_rshp_rord, (nbr_nds, nbr_nds, 16))
-#         min_pt_dists = np.min(dist_rord, axis = 2)
-
-#         distance = (x_ovlp2 * dy_min) + (y_ovlp2 * dx_min) + (both_ovlp * 1) + (none_ovlp * min_pt_dists)
-#         np.clip(distance, 1, None, out = distance)
 
 
-#     # just consider nodes as points at first
-#     else: 
-#         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
-#         distance = np.linalg.norm(delta_nds, axis=-1)
-#         np.clip(distance, 1, None, out = distance)
-
-
-#     # update points
-#     displacement = np.einsum('ijk,ij->ik',
-#                              delta_nds,
-#                              (self.k * self.k / distance**2) - A * distance / self.k)
-
-#     # repellant borders
-#     displacement[:,0] += (self.k*10)**2/(pos_nds[:,0] - self.dim_ar[:,0]/2)**2
-#     displacement[:,1] += (self.k*10)**2/(pos_nds[:,1] - self.dim_ar[:,1]/2)**2
-#     displacement[:,0] -= (self.k*10)**2/(self.width - (pos_nds[:,0] + self.dim_ar[:,0]/2))**2
-#     displacement[:,1] -= (self.k*10)**2/(self.height - (pos_nds[:,1] + self.dim_ar[:,1]/2))**2
-
-#     length = np.linalg.norm(displacement, axis=-1)
-#     length = np.where(length < 0.01, 0.1, length)
-#     delta_pos = np.einsum('ij,i->ij', displacement, self.t / length)
-
-#     # update node positions
-#     pos_nds += delta_pos
-#     # scale delta_pos to corner poitns
-#     delta_pos_xtnd = np.reshape(np.hstack([delta_pos]*4), (nbr_pts, 2))
-#     pos += delta_pos_xtnd
-
-
-#     if self.t > self.dt * self.def_itr * self.rep_nd_brd_start:
-#         # self.dt*30:
-#         self.t -= self.dt
-
-#     else: 
-#         # if self.t < self.dt*40:
-#         # print(np.sum(both_ovlp))
-#         if np.sum(both_ovlp) == nbr_nds:
-#             self.t -= self.dt
-
-#     ctr += 1
-#     # print('temperature: ', self.t)
-#     if self.t < 0: 
-#         break
+new_graph_str = "{\"links\":[\"bobbie -- james -- hates\",\"bobbie -- coke -- buys?\",\"bobbie -- mike -- friends\",\"bobbie -- leo -- owes 10k\",\"bobbie -- shally -- secretly dating\",\"bobbie -- laura -- officially together\"],\"cur_node\":\"bobbie\",\"node_texts\":{\"bobbie\":\"\\n\\n\\nis kinda reckless\\nknows about leo beating shally\\n\\nmight have killed someone? mentioned in e1\\n\\nfreaks out at funeral\\n\",\"james\":\"\\n\\npretty sentimental for a biker? \\ndoesn't want to go to laura's funeral\\nbut still shows up?\\n\",\"coke\":\"\\n\\n\",\"mike\":\"\\n\\nviolent psycho? \\none arm\\n\",\"leo\":\"\\n\\n\\ntext i want to get visualized\\n\\nbloody clothes\\nfucking controlling psycho that beats shally LUL\\n\\n\",\"shally\":\"\\n\\nkinda stupid? has like 0 motivation except let's fuck? \\njokes about funeral like a garbage person\\ngets gun\\n\",\"laura\":\"\\n\\ndaed between 0 and 4am\\nbite mark, self-inflicted? \\nsleeps with 3 men\\n- jamie?\\n- bobbie?\\n- ???\\n\\ncocaine\\ntwine: bound twice\\n\\ntied up twice\\n\"}}"
