@@ -13,10 +13,9 @@
 
 (defun loop-over-upper-level-nodes (parent)
     """get nodes and hierarchical links of parent node"""
-    ;; needs both nodes and links for some tests later iirc
     (let ((childrenx (org-brain-children parent))
-	  (res ()
-	       ))
+	  (res ())
+	  )
 	(push childrenx res)
 	
 	(push (mapcar (lambda (child)
@@ -28,6 +27,7 @@
 
 
 (defun children-specific-depth-let (node depth)
+    "retrieves children and hierarchical links of $node to level $depth"
     (let ((nodes-upper-level (list node))
 	  (all-nodes (list node))
 	  (all-links ())
@@ -61,166 +61,182 @@
     )
 
 
-(defun get-friend-links (nodes)
+(defun obvz-get-friend-links (nodes)
     """get links between nodes"""
-    (setq nodes-backup nodes)
+    (let ((friend-links ())
+	  (friend-nodes ())
+	  (node ())
+	  (friends ())
+	  (friend ())
+	  (edge-annot)
+	  (res ())
+	  )
 
-    (setq friend-links ())
-    (setq friend-nodes ())
+	(while nodes
+	    (setq node (car nodes))
+	    (setq friends (org-brain-friends node))
+	    (while friends
+		(setq friend (car friends))
+		
+		(setq edge-annot (org-brain-get-edge-annotation node friend))
+		(if (not (equal edge-annot nil))
+			(progn
+			    (push (concat node " -- " friend " -- " edge-annot) friend-links)
+			    (push friend friend-nodes)
+			    )
+		    )
 
-    (while nodes
-	(setq node (car nodes))
-	(setq friends (org-brain-friends node))
-	(while friends
-	    (setq friend (car friends))
-	    
-	    (setq edge-annot (org-brain-get-edge-annotation node friend))
-	    (if (not (equal edge-annot nil))
-		    (progn
-			(push (concat node " -- " friend " -- " edge-annot) friend-links)
-			(push friend friend-nodes)
-			)
+		(setq friends (cdr friends))
+
 		)
-
-	    (setq friends (cdr friends))
-
+	    (setq nodes (cdr nodes))
 	    )
-	(setq nodes (cdr nodes))
-	)
 
-    (setq res())
-    (push friend-links res)
-    (push friend-nodes res)
-    ;; friend-links
-    res
+
+	(push friend-links res)
+	(push friend-nodes res)
+	;; friend-links
+	res
+	)
     )
 
 	
 
-(defun obr-viz ()
+
+(defun obvz-create-graph-dict (obvz-include-node-texts)
+    """generate graph dict from pins"""
     (interactive)
-    """main function"""
-      ;; (mapcar 'children-specific-depth org-brain-pins 3)
-    (setq rel-nodes org-brain-pins)
-      
-    (setq total-nodes ())
-    (setq total-links ())
 
-    ;; get hierarchical relations
-
-    (while rel-nodes
-	(setq rel-node (car rel-nodes))
-
-	(setq node-res (children-specific-depth-let rel-node 8))
-	(push (car node-res) total-nodes)
-	(push (cdr node-res) total-links)
-
-	(setq rel-nodes (cdr rel-nodes))
-	)
-
-    (setq uniq-nodes-prep (counter (flatten-list total-nodes)))
-    (setq uniq-nodes (mapcar 'car uniq-nodes-prep))
-
-    ;; handle links
-    (setq friend-res (get-friend-links uniq-nodes))
-    (setq friend-links (cdr friend-res))
-    (push friend-links total-links)
-
-    ;; handle nodes
-    (setq friend-nodes (car friend-res))
-    (setq uniq-nodes (remove-duplicates (flatten-list (list uniq-nodes friend-nodes))))
-    (setq all-links (flatten-list total-links))
-
-    (setq node-string (mapconcat 'identity uniq-nodes ";"))
-    (setq link-string (mapconcat 'identity all-links ";"))
-
-    ;; include (or not) node texts
-    (if (equal include-node-texts t)
-	    (progn
-		(setq node-texts (mapcar 'org-brain-text uniq-nodes))
-		(setq node-text-alist (mapcar* #'cons uniq-nodes node-texts))
-		)
-	(setq node-text-alist (mapcar* #'cons uniq-nodes (make-list (len uniq-nodes) "")))
-	)
-
-    (setq graph-dict
-	  `(("links" . ,all-links)
-	    ("cur_node" . ,(org-brain-entry-at-pt))
-	    ("node_texts" . ,node-text-alist)
-	    )
+    (let (
+	  (rel-nodes org-brain-pins)
+	  (total-nodes ())
+	  (total-links ())
+	  (node-res ())
+	  (rel-node ())
+	  (uniq-nodes-hierarchy ())
+	  (friend-res ())
+	  (friend-links ())
+	  (friend-nodes ())
+	  (all-links ())
+	  (link-string ())
+	  (node-texts ())
+	  (node-text-alist ())
+	  (graph-dict ())
 	  )
-    graph-dict
+	;; get hierarchical relations
+
+	(while rel-nodes
+	    (setq rel-node (car rel-nodes))
+	    
+	    (setq node-res (children-specific-depth-let rel-node 8))
+	    (push (car node-res) total-nodes)
+	    (push (cdr node-res) total-links)
+
+	    (setq rel-nodes (cdr rel-nodes))
+	    )
+	;; (
+	(message "children there")
+
+	;; (setq uniq-nodes-prep (counter (flatten-list total-nodes)))
+	;; (setq uniq-nodes (mapcar 'car uniq-nodes-prep))
+
+	(setq uniq-nodes (remove-duplicates (flatten-list total-nodes)))
+
+	;; handle links
+	(setq friend-res (obvz-get-friend-links uniq-nodes))
+	(setq friend-links (cdr friend-res))
+	(push friend-links total-links)
+	(setq all-links (flatten-list total-links))
+	(setq link-string (mapconcat 'identity all-links ";"))
+	(message "all links there")
+
+	;; handle nodes
+	(setq friend-nodes (car friend-res))
+	(setq uniq-nodes (remove-duplicates (flatten-list (list uniq-nodes friend-nodes))))
+	(message "all nodes there")
+	
+	;; (setq node-string (mapconcat 'identity uniq-nodes ";"))
+	;; include (or not) node texts
+	(if (equal obvz-include-node-texts t)
+		(progn
+		    (setq node-texts (mapcar 'org-brain-text uniq-nodes))
+		    (setq node-text-alist (mapcar* #'cons uniq-nodes node-texts))
+		    )
+	    (setq node-text-alist (mapcar* #'cons uniq-nodes (make-list (len uniq-nodes) "")))
+	    )
+	(message "node texts there")
+
+	(setq graph-dict
+	      `(("links" . ,all-links)
+		("cur_node" . ,(org-brain-entry-at-pt))
+		("node_texts" . ,node-text-alist)
+		)
+	      )
+	graph-dict
+	)
     )
-    
+
+
+
 ;; data structure: dict with key node, value text
 ;; is itself dict in graph_dict
 
 
-(defun switch-node-text-inclusion()
+(defun obvz-switch-node-text-inclusion()
     (interactive)
-    (if (equal include-node-texts t)
-	    (setq include-node-texts nil)
-	(setq include-node-texts t)
+    (if (equal obvz-include-node-texts t)
+	    (setq obvz-include-node-texts nil)
+	(setq obvz-include-node-texts t)
 	)
-    (update-obr-viz)
+    (obvz-update-graph)
     )
 
 
 
 ;; (define-key org-brain-visualize-mode-map "G" 'obr-viz)
 
-(setq include-node-texts t)
 
-(define-key org-brain-visualize-mode-map "N" 'switch-node-text-inclusion)
-(define-key org-brain-visualize-mode-map "R" 'obr-viz-redraw)
-(define-key org-brain-visualize-mode-map "U" 'update-obr-viz)
-
-
-
-(defun update-obr-viz ()
+(defun obvz-reposition-nodes()
+    "redraw layout, either soft (apply forces to current layout) or hard (from random starting positions)"
     (interactive)
-    ;; (zmq-send sock (obr-viz))
-    (message (number-to-string (float-time)))
-    (setq current-config (obr-viz))
-    (if (not (equal current-config most-recent-config))
+    (let ((called-prefix current-prefix-arg))
+	(if (equal called-prefix nil)
+		    (setq obvz-redraw-alist '(("redraw" . "soft")))
+		(setq obvz-redraw-alist '(("redraw" . "hard")))
+		)
+	(zmq-send sock (json-encode-alist obvz-redraw-alist))
+	)
+    )
+
+
+
+
+(defun obvz-update-graph ()
+    (interactive)
+
+    (setq obvz-current-config (obvz-create-graph-dict obvz-include-node-texts))
+    (if (not (equal obvz-current-config obvz-most-recent-config))
 	    (progn
-		(setq most-recent-config current-config)
-		(zmq-send sock (json-encode-alist current-config))
+		(setq obvz-most-recent-config obvz-current-config)
+		(zmq-send sock (json-encode-alist obvz-current-config))
 		)
 	)
     )
 
 
 
+(add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain change
 
+(setq obvz-include-node-texts t)
+(setq obvz-most-recent-config ())
 
-;; (setq sock (zmq-socket (zmq-context) zmq-REQ))
-;; (zmq-connect sock "tcp://127.0.0.1:5556")
-;; (zmq-send sock "asdf")
-;; (zmq-send sock (obr-viz))
-
-;; (setq mes_back (zmq-recv sock))
-;; (zmq-connect sock "tcp://127.0.0.1:5556")
-
-
+(define-key org-brain-visualize-mode-map "N" 'obvz-switch-node-text-inclusion)
+(define-key org-brain-visualize-mode-map "R" 'obvz-reposition-nodes)
+(define-key org-brain-visualize-mode-map "U" 'obvz-update-graph)
 
 
 (setq sock (zmq-socket (zmq-context) zmq-PUB))
 (zmq-bind sock "tcp://127.0.0.1:5556")
-(setq most-recent-config ())
-
-(add-hook 'org-brain-after-visualize-hook 'update-obr-viz)
-
-
-(defun obr-viz-redraw()
-    "redraw layout, either soft (apply forces to current layout) or hard (from random starting positions)"
-    (interactive)
-    (if (equal current-prefix-arg nil)
-	    (setq redraw-alist '(("redraw" . "soft")))
-	(setq redraw-alist '(("redraw" . "hard")))
-	)
-    (zmq-send sock (json-encode-alist redraw-alist))
-    )
 
     
 
@@ -523,3 +539,18 @@
 ;; 		    )
 ;; 		)
 ;; 	)
+
+(defun scope-test ()
+    (let ((x 1))
+	(setq some-var x)
+	))
+
+;; ** zmq communication tests
+
+;; (setq sock (zmq-socket (zmq-context) zmq-REQ))
+;; (zmq-connect sock "tcp://127.0.0.1:5556")
+;; (zmq-send sock "asdf")
+;; (zmq-send sock (obr-viz))
+
+;; (setq mes_back (zmq-recv sock))
+;; (zmq-connect sock "tcp://127.0.0.1:5556")
