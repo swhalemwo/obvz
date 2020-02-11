@@ -29,6 +29,8 @@ def dumper(list_of_strings):
         [wr.writerow([i]) for i in list_of_strings]
 
 
+# dumper(["it's dumping time"])
+
 class ob_viz(QWidget):
     
     def __init__(self, bg_color):
@@ -43,6 +45,7 @@ class ob_viz(QWidget):
         self.rwr_c = 0
 
         # dumper([qt_coords])
+        dumper(['obv viz init'])
         # self.show()
 
         # with open("/tmp/eaf3.csv", "a") as fo:
@@ -149,6 +152,7 @@ class ob_viz(QWidget):
             # only remove edge when neither of nodes removed
             if n0 in self.vd.keys() and n1 in self.vd.keys():
                 self.g.remove_edge(self.g.edge(self.vd[n0], self.vd[n1]))
+
 
         # dumper(['graph modifications done'])
 
@@ -267,7 +271,7 @@ class ob_viz(QWidget):
 
         for i in zip(self.qt_coords, self.node_names):
             if self.emacs_var_dict['cur_node'] == i[1]:
-                qp.setPen(QPen(Qt.black, 5, Qt.SolidLine))
+                qp.setPen(QPen(Qt.black, 4, Qt.SolidLine))
                 qp.drawEllipse(i[0][0]-(node_width/2), i[0][1]- (node_width/2), node_width, node_width) 
                 qp.setPen(QPen(Qt.black, 3, Qt.SolidLine))
 
@@ -302,8 +306,13 @@ class ob_viz(QWidget):
 
 
 class AppBuffer(Buffer):
-    def __init__(self, buffer_id, url, arguments):
-        Buffer.__init__(self, buffer_id, url, arguments, True, QColor(0, 0, 0, 255))
+    def __init__(self, buffer_id, url, config_dir, arguments, emacs_var_dict):
+        dumper(["it's dumping time 2"])
+
+        Buffer.__init__(self, buffer_id, url, arguments, emacs_var_dict, True, QColor(0, 0, 0, 255))
+        # Buffer.__init__(self, buffer_id, url, arguments, True, QColor(0, 0, 0, 255))
+
+        # def __init__(self, buffer_id, url, arguments):
         
         # with open("/tmp/eaf3.csv", "a") as fo:
         #     wr = csv.writer(fo)
@@ -311,11 +320,15 @@ class AppBuffer(Buffer):
         
         self.update()
 
-        # dumper(list(self.emacs_var_dict.keys()))
+        dumper(list(self.emacs_var_dict.keys()))
+        dumper(["it's dumping time 3"])
+        
         self.add_widget(ob_viz(QColor(0, 0, 0, 255)))
 
+        dumper(["it's dumping time 4"])
         self.timer = QTimer(self, timeout=self.update_demo, interval=40)
         self.timer.start()
+        
 
         self.reload_timer = 0
 
@@ -323,30 +336,44 @@ class AppBuffer(Buffer):
         self.cur_node = ""
 
         self.update()
+        
 
     def update_demo(self):
         
-        # initiate
+        dumper(['buffer.widget.c: ', str(self.buffer_widget.c)])
+        dumper(['rwr_c: ', str(self.buffer_widget.rwr_c)])
+
+        dumper(['is edge string new: ', str(self.edge_string != self.emacs_var_dict['links'])])
+        dumper(['update_check: ', str(self.emacs_var_dict['update_check'])])
+
+        # initiate at first run
         if self.buffer_widget.c == 0:
             self.buffer_widget.init2(self.emacs_var_dict)
             self.edge_string = self.emacs_var_dict['links']
             self.buffer_widget.update()
-            self.cur_node = self.emacs_var_dict['cur_node']
+            # self.cur_node = self.emacs_var_dict['cur_node']
+            # dumper(['setup done'])
             
+        self.buffer_widget.c += 1
+        
         # update graph
         if self.edge_string != self.emacs_var_dict['links'] and self.buffer_widget.c > 0:
             self.buffer_widget.update_graph(self.emacs_var_dict)
             self.edge_string = self.emacs_var_dict['links']
 
-        if self.cur_node != self.emacs_var_dict['cur_node']:
-            self.buffer_widget.update()
-            self.cur_node = self.emacs_var_dict['cur_node']
+        dumper(['update step done'])
 
+        # if self.cur_node != self.emacs_var_dict['cur_node']:
+        #     self.buffer_widget.update()
+        #     self.cur_node = self.emacs_var_dict['cur_node']
+
+        
         # realign nodes? 
         if self.buffer_widget.rwr_c > 0:
             self.buffer_widget.redraw_layout()
             self.buffer_widget.update()
 
+        dumper(['redraw step done'])
         # dumper(["update_check", self.emacs_var_dict['update_check']])
         
         if self.emacs_var_dict['update_check'] == "1" and self.reload_timer == 0:
@@ -358,9 +385,10 @@ class AppBuffer(Buffer):
             self.reload_timer = 10
             self.buffer_widget.update()
             dumper(['redrawing done'])
-            
+        
+        dumper(['update check step done'])
 
-        self.buffer_widget.c += 1
+        
         if self.reload_timer > 0:
             self.reload_timer -= 1
 
