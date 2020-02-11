@@ -87,5 +87,16 @@ def pythran_dist(pos, row_order, nbr_nds, nbr_pts):
     np.clip(distance, 1, None, out = distance)
 
     # return dist_pts
-    return distance
+    both_ovlp_cnt = both_ovlp.sum()
+
+
+    # print('pythran dist values start')
+    # print('x_ovlp: ', x_ovlp)
+    # print('y_ovlp: ', y_ovlp)
+
+    # print('both_ovlp: ', both_ovlp)
+    # print('both_ovlp_cnt: ', both_ovlp_cnt)
+    # print('pythran dist values end')
+
+    return distance, both_ovlp_cnt
 
