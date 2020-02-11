@@ -14,7 +14,7 @@ socket.bind("tcp://127.0.0.1:5555")
 
 while True:
     #  Wait for next request from client
-    print('lol')
+    print('iter start')
     
     message = socket.recv()
     print("Received request: %s" % message)
@@ -24,3 +24,4 @@ while True:
 
     #  Send reply back to client
     socket.send(b"World")
+    print('iter end')

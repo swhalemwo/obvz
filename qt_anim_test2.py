@@ -106,10 +106,12 @@ class QtTest(QWidget):
         # k is something with strength of repulsive force
         
         # self.k = math.sqrt((self.area)/nx.number_of_nodes(g))/4
-        self.k = 50
+        self.k = 30
         print('k: ', self.k)
         self.timer = QTimer(self, timeout=self.update_demo, interval=40)
         self.timer.start()
+        
+        print('aaaaaaaaaaa')
         
         
     def f_a(self, d,k):
@@ -358,7 +360,6 @@ class QtTest(QWidget):
         displacement[:,1] -= (self.k*10)**2/(self.height - (pos_nds[:,1] + dim_ar[:,1]/2))**2
 
 
-        
         length = np.linalg.norm(displacement, axis=-1)
         length = np.where(length < 0.01, 0.1, length)
         delta_pos = np.einsum('ij,i->ij', displacement, self.t / length)
@@ -385,6 +386,7 @@ class QtTest(QWidget):
             
         print('temperature: ', self.t)
         if self.t < 0: 
+            self.timer.stop()
             self.t = 0
 
         self.update()
@@ -486,7 +488,7 @@ if __name__ == "__main__":
     
 
     while True:
-        g = nx.random_geometric_graph(15, 0.3)
+        g = nx.random_geometric_graph(50, 0.2)
         # g = nx.random_geometric_graph(2, 1)
         # if nx.number_connected_components(g) == 2 and min([len(i) for i in nx.connected_components(g)]) > 5:
         if nx.number_connected_components(g) == 1: 
@@ -504,15 +506,14 @@ if __name__ == "__main__":
     
     # g.nodes[0]['width'] = g.nodes[0]['height'] = 10
     # g.nodes[1]['width'] = g.nodes[1]['height'] = 10
-    
-    
-    
 
     w = QtTest(g)
+    # print('aaaaaaaaaaa')
     
     # w.timer.stop()
     
     App.exec()
+    
 
     
 # think i have to add angle 

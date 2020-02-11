@@ -1,10 +1,9 @@
 import numpy as np
 
 
-
 # # pythran export pythran_ovlp(float list, int list)
 
-#pythran export pythran_ovlp(float[], int list)
+#pythran export pythran_ovlp(float[:,:], int list)
 def pythran_ovlp(pos, row_order):
     """see if rectangles (indicated by 4 corner points) overlap, 
     has to be called with just 1D of points
