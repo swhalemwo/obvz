@@ -41,7 +41,8 @@ class ZeroMQ_Listener(QtCore.QObject):
             # for i in range(10):
             #     self.message.emit(str(string, 'utf-8'))
             #     sleep(1)
-            self.message.emit(str(string, 'utf-8'))
+            # self.message.emit(str(string, 'utf-8'))
+            self.message.emit("jjj")
 
             
             # do the update stuff here? 
@@ -112,7 +113,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.x +=3
         self.update()
 
-        if self.ctr == 10:
+        if self.ctr == 4:
             self.paint_timer.stop()
             self.ctr = 0
 
@@ -139,4 +140,5 @@ if __name__ == "__main__":
 
     sys.exit(app.exec_())
     
+
 
