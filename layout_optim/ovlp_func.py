@@ -15,8 +15,8 @@ from pythran_funcs import pythran_dist
 
 
 
-#pythran export pythran_itrtr(float64[:,:], float64[:,:], float[:,:], int list, float64[:,:], float, int, float, float, float, float)
-def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_start, k, height, width):
+#pythran export pythran_itrtr(float64[:,:], float64[:,:], float[:,:], int list, float64[:,:], float, int, float, float, float, float, float)
+def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_start, k, height, width, grav_multiplier):
     """calculates new positions given 
     - vertex/node positions (pos, pos_nds), 
     - connectivity matrix A
@@ -27,19 +27,19 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
     - ideal distance between nodes k
     - height and width of canvas
     """
-    # t = 12
-    
-    # def_itr = 100
-    dt = t/def_itr
 
-    # rep_nd_brd_start = 0.3
-    # k = 20
-    # height = width = 1000
+
+    dt = t/def_itr
 
     nbr_nds = pos_nds.shape[0]
     nbr_pts = pos.shape[0]
 
+    max_iter = 500
     ctr = 0
+
+    center = np.array((width/2, height/2))
+    # grav_multiplier = 10
+
     
     while True:    
 
@@ -121,19 +121,33 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
         delta_pos_xtnd = np.hstack([delta_pos]*4).reshape((nbr_pts, 2))
         pos += delta_pos_xtnd
         
-        # reduce temperature in first phase (no node borders)
-        # # reduce temp in second phase if nodes don't overlap
-        
+        # max iterations
         ctr +=1
-        if c == 500:
+        if ctr == max_iter:
             break
+        
+        # see if any nodes violate boundaries
 
+        canvas_boundaries_crossed = 0
+        
+        min_x = np.min(pos[:,0])
+        max_x = np.max(pos[:,0])
+
+        min_y = np.min(pos[:,1])
+        max_y = np.max(pos[:,1])
+        
+        if min_x < 0 or min_y < 0 or max_x > width or max_y > height: 
+            canvas_boundaries_crossed = 1
+
+        # reduce temperature in first phase (no node borders)
+        # # reduce temp in second phase if nodes don't overlap and boundaries not 
+        
         if t > (dt * def_itr * rep_nd_brd_start):
             t -= dt
 
         else: 
 
-            if both_ovlp_cnt == nbr_nds:
+            if both_ovlp_cnt == nbr_nds and canvas_boundaries_crossed == 0:
                 t -= dt
 
         if t < 0:
