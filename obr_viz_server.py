@@ -34,12 +34,13 @@ app = QApplication(sys.argv)
 
 def get_edge_point_delta(wd, ht, angle):
     """get attach point of edge for node"""
-    rel_angle = abs(angle) % math.pi
 
-    if angle >= 0 and angle < math.pi/2: sector = 1
+    # print(angle)
+
+    if angle >= 0 and angle <= math.pi/2: sector = 1
     elif angle > math.pi/2: sector = 2
     elif angle < -math.pi/2: sector = 3
-    elif angle < 0 and angle > -math.pi/2: sector = 4
+    elif angle <= 0 and angle >= -math.pi/2: sector = 4
 
     # jfc have to define every single case separately
     if sector == 1:
