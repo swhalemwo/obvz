@@ -17,6 +17,16 @@ from pythran_funcs import pythran_dist
 
 #pythran export pythran_itrtr(float64[:,:], float64[:,:], float[:,:], int list, float64[:,:], float, int, float, float, float, float)
 def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_start, k, height, width):
+    """calculates new positions given 
+    - vertex/node positions (pos, pos_nds), 
+    - connectivity matrix A
+    - dimension array dim_ar
+    - initial temperature t
+    - minimum definite number of iterations def_itr
+    - percentage of last section of def_itr when to start making node borders repellant
+    - ideal distance between nodes k
+    - height and width of canvas
+    """
     # t = 12
     
     # def_itr = 100
@@ -29,6 +39,7 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
     nbr_nds = pos_nds.shape[0]
     nbr_pts = pos.shape[0]
 
+    ctr = 0
     
     while True:    
 
@@ -91,11 +102,10 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
         
         # reduce temperature in first phase (no node borders)
         # # reduce temp in second phase if nodes don't overlap
-
-        # # ---------- break after one run
-        # if 1 == 1:
-        #     break
-        # # ---------- break after one run
+        
+        ctr +=1
+        if c == 500:
+            break
 
         if t > (dt * def_itr * rep_nd_brd_start):
             t -= dt
@@ -108,7 +118,7 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
         if t < 0:
             break
         
-    return pos_nds, pos
+    return pos_nds, pos, ctr
 
 # * scratch
 
