@@ -248,12 +248,12 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         if cmd == "hard":
             for n in self.g.nodes():
                 
-                self.g.nodes[n]['x'] = choices(range(int(self.g.nodes[n]['width']/2) + 10, self.width - (int(self.g.nodes[n]['width']/2) + 10)))[0]
-                self.g.nodes[n]['y'] = choices(range(int(self.g.nodes[n]['height']/2) + 10, self.height - (int(self.g.nodes[n]['height']/2) + 10)))[0]
+                self.g.nodes[n]['x'] = choices(range(100, self.width - 100))[0]
+                self.g.nodes[n]['y'] = choices(range(100, self.height - 100))[0]
 
-        # just apply forces to current layout
+
+        # apply forces to current layout
         # do i even need condition? not really i think, condition is based on what calls this function
-        # if cmd == "soft":
             
         self.t = self.init_t
         self.recalculate_layout()
@@ -506,11 +506,6 @@ class ZeroMQ_Window(QtWidgets.QWidget):
                 self.g.nodes[n]['x'] = choices(range(100, self.width - 100))[0]
                 self.g.nodes[n]['y'] = choices(range(100, self.height - 100))[0]
                 
-                # self.g.nodes[n]['x'] = choices(range(node_sz[0] + 10, self.width - (node_sz[0] + 10)))[0]
-                # self.g.nodes[n]['y'] = choices(range(node_sz[1] + 10, self.height - (node_sz[1] + 10)))[0]
-
-            # self.g.nodes[n]['width'] = node_sz[0]
-            # self.g.nodes[n]['height'] = node_sz[1]
 
         
         print('node positions adjusted')
