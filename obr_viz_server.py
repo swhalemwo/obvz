@@ -14,6 +14,12 @@ from time import sleep, time
 
 
 
+import logging
+# logging.basicConfig(level=logging.INFO)
+logging.getLogger().setLevel(logging.INFO)
+
+# logging.info("asdf")
+
 import sys
 import signal
 
@@ -169,8 +175,9 @@ class ZeroMQ_Listener(QtCore.QObject):
         context = zmq.Context()
         self.socket = context.socket(zmq.SUB)
 
-        print("Collecting updates from weather server")
         self.socket.connect ("tcp://localhost:5556")
+        logging.info("connected to server")
+
 
         self.socket.setsockopt(zmq.SUBSCRIBE, b'')
         
@@ -292,7 +299,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
     
     def signal_received(self, new_graph_str):
-        print('signal receiving')
+        logging.info('signal receiving')
         # main parsing/updates has to happen here
         new_graph_dict = json.loads(new_graph_str)
     
@@ -311,14 +318,14 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             update_me = 0
             # check if graph structure has changed
             if self.link_str != new_graph_dict['links'] and new_graph_dict['links'] != None:
-                print('graph has changed')
+                logging.info('graph has changed')
                 self.update_graph(new_graph_dict['links'])
                 self.link_str = new_graph_dict['links']
                 update_me = 1
 
             # check if node texts have been modified
             if self.node_texts_raw != new_graph_dict['node_texts'] and new_graph_dict['node_texts'] != None:
-                print('node texts have changed')
+                logging.info('node texts have changed')
                 self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])
                 self.node_texts_raw = new_graph_dict['node_texts']
                 update_me = 1
@@ -332,7 +339,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             # no change: just make sure redrawing is done to take cur_node into account
             # if self.link_str == new_graph_dict['links'] and new_graph_dict['node_texts'] == self.node_texts:
             if update_me == 0:
-                print('graph is same, just update current node')
+                logging.info('graph is same, just update current node')
                 self.update()
                 # print(new_link_str)
 
@@ -367,7 +374,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # either way should avoid multiple instantiations of fm_nt
         # also need to split up position assignment and height/width calculation 
         
-        print('setting attributes')
+        logging.info('setting attributes')
 
         # font = ImageFont.truetype('Arial', self.font_size)
         
@@ -435,24 +442,24 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         nodes_to_del = list(old_nodes - new_nodes)
         nodes_to_add = list(new_nodes - old_nodes)
 
-        print('new tpls: ', new_tpls)
-        print('old tpls: ', old_tpls)
+        logging.info(['new tpls: ', new_tpls])
+        logging.info(['old tpls: ', old_tpls])
 
-        print("links_to_add: ", tpls_to_add)
-        print("links_to_del: ", tpls_to_del)
+        logging.info(["links_to_add: ", tpls_to_add])
+        logging.info(["links_to_del: ", tpls_to_del])
 
-        print('new nodes: ', new_nodes)
-        print('old nodes: ', old_nodes)
+        logging.info(['new nodes: ', new_nodes])
+        logging.info(['old nodes: ', old_nodes])
         
-        print("nodes_to_add: ", nodes_to_add)
-        print("nodes_to_del: ", nodes_to_del)
+        logging.info(["nodes_to_add: ", nodes_to_add])
+        logging.info(["nodes_to_del: ", nodes_to_del])
         
         # first add nodes + index them
         # actually not clear if vd is needed much
         index_pos = len(self.g.nodes)
 
         for n in nodes_to_add:
-            print('adding node')
+            logging.info('adding node')
             
             self.g.add_node(n)
             self.vd[n] = index_pos
@@ -460,7 +467,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             index_pos +=1
 
         self.g.remove_nodes_from(nodes_to_del)
-        print('nodes deleted')
+        logging.info('nodes deleted')
         # have to reindex after deletion
 
         self.vd = {}
@@ -471,9 +478,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             self.vdr[c] = i
             c += 1
         
-        print(self.vd)
-        
-        print('nodes deleted')
+        logging.info('nodes deleted')
         # nodes_to_del_id = 
 
         # dumper(['old nodes deleted, add new links'])
@@ -486,7 +491,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # print('g edges after deleting: ', self.g.edges)
         # print('nbr nodes: ', len(self.g.nodes), "    nbr edges: ", len(self.g.edges))
         
-        print('graph modifications done')
+        logging.info('graph modifications done')
                 
         self.adj = np.array([(self.vd[e[0]], self.vd[e[1]]) for e in self.g.edges()])
         self.node_names = [i for i in self.g.nodes()]
@@ -499,7 +504,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         """set positions of new nodes"""
         
         for n in nodes_to_add:
-            print('set new position of ', n)
+            logging.info(['set new position of ', n])
             # print('neighbors: ', set(self.g.neighbors(n)))
             # print('nodes to add: ', nodes_to_add)
 
@@ -508,8 +513,8 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             # node_sz = (node_rect.width() + self.wd_pad*2, node_rect.height())
             
             v_prnts = list(set(self.g.predecessors(n)) - set(nodes_to_add))
-            # print('node: ', n)
-            print('node prnts: ', v_prnts)
+
+            logging.info(['node prnts: ', v_prnts])
             if len(v_prnts) > 0:
                 self.g.nodes[n]['x'] = self.g.nodes[v_prnts[0]]['x']
                 self.g.nodes[n]['y'] = self.g.nodes[v_prnts[0]]['y']
@@ -521,7 +526,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
                 
 
         
-        print('node positions adjusted')
+        logging.info('node positions adjusted')
         
         self.width = self.size().width()
         self.height = self.size().height()
@@ -534,7 +539,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
     def recalculate_layout(self):
         """calculate new change_array, set rwr_c counter"""
-        print('recalculating starting')
+        logging.info('recalculating starting')
         
         # get node array
         self.base_pos_ar = np.array([(self.g.nodes[i]['x'],self.g.nodes[i]['y']) for i in self.g.nodes])
@@ -580,7 +585,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         ctr = pythran_res[2]
 
         t2 = time()
-        print('calculated layout in ' + str(t2-t1) + 'seconds with ' + str(ctr) + ' iterations')
+        logging.info('calculated layout in ' + str(round(t2-t1,4)) + ' seconds with ' + str(ctr) + ' iterations')
 
         # base_pos_ar = np.array([(g.nodes[i]['x'],g.nodes[i]['y']) for i in g.nodes])
 
@@ -599,26 +604,14 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # print("base_pos_ar: ", self.base_pos_ar)
         # print("goal_ar: ", pos)
         # print("chng_ar: ", self.chng_ar)
-        print('recalculating done')
+        logging.info('recalculating done')
 
 
 
     def timer_func(self):
 
         self.qt_coords = self.base_pos_ar + self.chng_ar * self.ctr
-        # print(self.qt_coords)
         
-        # some_node = list(self.g.nodes())[5]
-        # print('node position in base_pos_ar: ', self.base_pos_ar[5])
-        # print('change vector: ', self.chng_ar[5])
-        # print('ctr: ', self.ctr)
-        # print('some node: ', some_node)
-        # print('x: ', self.g.nodes[some_node]['x'], 'y: ', self.g.nodes[some_node]['y'])
-        # print("some nodes' position: ", self.qt_coords[5])
-        
-            # print(self.ctr)
-
-
         self.update()
         if self.ctr == self.step:
             
@@ -744,7 +737,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # print(self.width, self.height)
         t2 = time()
         
-        print('painting took ', t2-t1, ' seconds')
+        logging.info('painting took ' + str(round(t2-t1,4)) + ' seconds')
 
 
 if __name__ == "__main__":
@@ -755,7 +748,3 @@ if __name__ == "__main__":
     
 
 
-# * scrap
-
-
-new_graph_str = "{\"links\":[\"bobbie -- james -- hates\",\"bobbie -- coke -- buys?\",\"bobbie -- mike -- friends\",\"bobbie -- leo -- owes 10k\",\"bobbie -- shally -- secretly dating\",\"bobbie -- laura -- officially together\"],\"cur_node\":\"bobbie\",\"node_texts\":{\"bobbie\":\"\\n\\n\\nis kinda reckless\\nknows about leo beating shally\\n\\nmight have killed someone? mentioned in e1\\n\\nfreaks out at funeral\\n\",\"james\":\"\\n\\npretty sentimental for a biker? \\ndoesn't want to go to laura's funeral\\nbut still shows up?\\n\",\"coke\":\"\\n\\n\",\"mike\":\"\\n\\nviolent psycho? \\none arm\\n\",\"leo\":\"\\n\\n\\ntext i want to get visualized\\n\\nbloody clothes\\nfucking controlling psycho that beats shally LUL\\n\\n\",\"shally\":\"\\n\\nkinda stupid? has like 0 motivation except let's fuck? \\njokes about funeral like a garbage person\\ngets gun\\n\",\"laura\":\"\\n\\ndaed between 0 and 4am\\nbite mark, self-inflicted? \\nsleeps with 3 men\\n- jamie?\\n- bobbie?\\n- ???\\n\\ncocaine\\ntwine: bound twice\\n\\ntied up twice\\n\"}}"
