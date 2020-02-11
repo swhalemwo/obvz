@@ -13,6 +13,7 @@ from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont, QFontMetrics
 from time import sleep, time
 
 
+
 import sys
 import signal
 
@@ -195,8 +196,20 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         # print(self.width, self.height)
 
-        self.font_size = 13
+        # getting font pixel information
+        self.font_size = 14
+        self.node_text_size = 10
         
+        font_title = QFont("Arial", self.font_size)
+        font_node_text = QFont("Arial", self.node_text_size)
+        
+        fm = QFontMetrics(font_title)
+        self.title_vflush = fm.boundingRect("node title").height()
+
+        fm = QFontMetrics(font_node_text)
+        self.node_text_vflush = fm.boundingRect("node text").height()
+
+
         # self.area = self.width * self.height
         self.wd_pad = 8 # padding to add to sides of node for better drawing
 
@@ -356,14 +369,14 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         
         print('setting attributes')
 
-        font = ImageFont.truetype('Arial', self.font_size)
+        # font = ImageFont.truetype('Arial', self.font_size)
         
         # font = QFont("Arial", 12)
         font = QFont("Arial", self.font_size)
         fm = QFontMetrics(font)
 
 
-        font = QFont("Arial", 10)
+        font = QFont("Arial", self.node_text_size)
         fm_nt = QFontMetrics(font) # font metric node text
 
 
@@ -693,16 +706,18 @@ class ZeroMQ_Window(QtWidgets.QWidget):
             # qp.drawText(t[0][0]-t[1][0]/2+ self.wd_pad, t[0][1] + 5 , t[2])
             
             xpos = t[0][0]-t[1][0]/2+ self.wd_pad
-            ypos = (t[0][1]-t[1][1]/2) + 15
+            # ypos = (t[0][1]-t[1][1]/2) + self.font_size
+            ypos = (t[0][1]-t[1][1]/2) + self.title_vflush/1.3333
+            # ypos = (t[0][1]-t[1][1]/2)
             qp.drawText(xpos, ypos, t[2])
             
-            qp.setFont(QFont('Arial', 10))
+            qp.setFont(QFont('Arial', self.node_text_size))
             
             node_text_lines_raw = self.node_texts_raw[t[2]]
             node_text_lines =  [i for i in node_text_lines_raw.split('\n') if len(i) > 0]
             c = 1
             for t2 in node_text_lines:
-                qp.drawText(xpos, ypos + 15*c, t2)
+                qp.drawText(xpos, ypos + self.node_text_vflush*c, t2)
                 c+=1
             
             qp.setFont(QFont('Arial', self.font_size))
