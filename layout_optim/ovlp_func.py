@@ -81,11 +81,32 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
 
         displacement = np.concatenate([dispx2[:,None], dispy2[:,None]], axis = 1)
 
+        # -------- gravity
+        
+        # cntr = np.array([2,2])
+        
+        # cntr_vec_abs = np.abs(cntr_vec)
+        # cntr_vec_abs[cntr_vec_abs == 0] = 1
+
+        # cntr_vec/cntr_vec_abs
+        # nope that removes the angle
+        # need sum to be 1
+
+
+        center_vec = center - pos_nds
+
+        sum_vec = np.abs(np.sum(center_vec, axis =1))
+        
+        gravity_vec = (center_vec/sum_vec[:,None])*grav_multiplier
+        displacement = displacement + gravity_vec
+
+        # need vector to center
+
         # --------------- displacement change done
 
         length = np.sqrt(np.sum(displacement**2, axis = -1))
         length = np.where(length < 0.01, 0.1, length)
-        # print('length: ', length)
+
         len_ar = t/length
         delta_pos = displacement * len_ar[:,None]
 
