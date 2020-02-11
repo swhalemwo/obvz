@@ -233,9 +233,16 @@
     )
 
 
+(defun obvz-start ()
+    (interactive)
+    (shell-command (concat "cd "obvz-dir " && python3 obr_viz_server.py & "))
+    (setq obvz-most-recent-config ())
+    )
+
 
 (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain change
 
+(setq obvz-dir "~/Dropbox/personal_stuff/obr-viz/")
 (setq obvz-include-node-texts t)
 (setq obvz-only-use-annotated-edges t)
 (setq obvz-most-recent-config ())
