@@ -248,8 +248,8 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         if cmd == "hard":
             for n in self.g.nodes():
                 
-                self.g.nodes[n]['x'] = choices(range(self.g.nodes[n]['width'] + 10, self.width - (self.g.nodes[n]['width'] + 10)))[0]
-                self.g.nodes[n]['y'] = choices(range(self.g.nodes[n]['height'] + 10, self.height - (self.g.nodes[n]['height'] + 10)))[0]
+                self.g.nodes[n]['x'] = choices(range(int(self.g.nodes[n]['width']/2) + 10, self.width - (int(self.g.nodes[n]['width']/2) + 10)))[0]
+                self.g.nodes[n]['y'] = choices(range(int(self.g.nodes[n]['height']/2) + 10, self.height - (int(self.g.nodes[n]['height']/2) + 10)))[0]
 
         # just apply forces to current layout
         # do i even need condition? not really i think, condition is based on what calls this function
@@ -563,8 +563,10 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         t1 = time()
         ctr = 0
 
+        grav_multiplier = 5.0
+
         pythran_res = pythran_itrtr(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
-                                    self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0)
+                                    self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
 
         pos_nds = pythran_res[0]
         ctr = pythran_res[2]
