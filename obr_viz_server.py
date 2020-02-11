@@ -14,11 +14,10 @@ from time import sleep, time
 
 
 
-import logging
-# logging.basicConfig(level=logging.INFO)
-logging.getLogger().setLevel(logging.INFO)
 
-# logging.info("asdf")
+from argparse import ArgumentParser
+import logging
+
 
 import sys
 import signal
@@ -741,6 +740,15 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
 
 if __name__ == "__main__":
+
+    parser = ArgumentParser()
+    parser.add_argument('-v', default=False, action='store_true')
+    args = parser.parse_args()
+
+    if args.v == True:
+        logging.getLogger().setLevel(logging.INFO)
+    else:
+        logging.getLogger().setLevel(logging.WARNING)
 
 
     mw = ZeroMQ_Window()
