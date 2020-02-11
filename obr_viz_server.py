@@ -7,11 +7,11 @@ from PyQt5.QtWidgets import QPushButton, QApplication, QWidget
 from PyQt5.QtCore import QTimer, Qt, QObject
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont, QFontMetrics
-from sklearn.metrics.pairwise import euclidean_distances
-
+# from sklearn.metrics.pairwise import euclidean_distances
+# from scipy.spatial import distance as dist
 
 from time import sleep, time
-from scipy.spatial import distance as dist
+
 
 import sys
 import signal
@@ -212,6 +212,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.adj = [] # adjacency list? 
         self.node_names = []
         self.link_str = ""
+        self.node_texts_raw = {}
         self.node_texts = {}
         self.links = []
         self.tpls = []
@@ -267,6 +268,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.tpls = []
         self.vd = {}
         self.vdr = {}
+        self.node_texts_raw = {}
         
         self.qt_coords = np.array([])
         self.dim_ar = np.array([])
@@ -288,7 +290,6 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # links and node texts as separate things
         else:
             self.cur_node = new_graph_dict['cur_node']
-            # self.node_texts = new_graph_dict['node_texts']
             
             if new_graph_dict['links'] == None:
                 self.reset()
@@ -302,10 +303,10 @@ class ZeroMQ_Window(QtWidgets.QWidget):
                 update_me = 1
 
             # check if node texts have been modified
-            if self.node_texts != new_graph_dict['node_texts'] and new_graph_dict['node_texts'] != None:
+            if self.node_texts_raw != new_graph_dict['node_texts'] and new_graph_dict['node_texts'] != None:
                 print('node texts have changed')
                 self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])
-                self.node_texts = new_graph_dict['node_texts']
+                self.node_texts_raw = new_graph_dict['node_texts']
                 update_me = 1
 
             # start the layout calculations from here
@@ -565,7 +566,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
                                     self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0)
 
         pos_nds = pythran_res[0]
-
+        ctr = pythran_res[2]
 
         t2 = time()
         print('calculated layout in ' + str(t2-t1) + 'seconds with ' + str(ctr) + ' iterations')
@@ -688,11 +689,27 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         qp.setPen(QColor(168, 34, 2))
 
-
+        # draw node titles
         qp.setFont(QFont('Arial', self.font_size))
-        [qp.drawText(t[0][0]-t[1][0]/2+ self.wd_pad, t[0][1] + 5 , t[2]) for t in zip(self.qt_coords, self.dim_ar, self.node_names)]
-
-
+        for t in zip(self.qt_coords, self.dim_ar, self.node_names): 
+            # qp.drawText(t[0][0]-t[1][0]/2+ self.wd_pad, t[0][1] + 5 , t[2])
+            
+            xpos = t[0][0]-t[1][0]/2+ self.wd_pad
+            ypos = (t[0][1]-t[1][1]/2) + 15
+            qp.drawText(xpos, ypos, t[2])
+            
+            qp.setFont(QFont('Arial', 10))
+            
+            node_text_lines_raw = self.node_texts_raw[t[2]]
+            node_text_lines =  [i for i in node_text_lines_raw.split('\n') if len(i) > 0]
+            c = 1
+            for t2 in node_text_lines:
+                qp.drawText(xpos, ypos + 15*c, t2)
+                c+=1
+            
+            qp.setFont(QFont('Arial', self.font_size))
+        
+        
         qp.setPen(QPen(Qt.black, 3, Qt.SolidLine))
         # qp.setBrush(QBrush(Qt.green, Qt.SolidPattern))
         
