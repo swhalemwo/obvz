@@ -224,12 +224,12 @@
     (interactive)
 
     (setq obvz-current-config (obvz-create-graph-dict obvz-include-node-texts))
-    (if (not (equal obvz-current-config obvz-most-recent-config))
-	    (progn
-		(setq obvz-most-recent-config obvz-current-config)
-		(zmq-send sock (json-encode-alist obvz-current-config))
-		)
-	)
+    ;; (if (not (equal obvz-current-config obvz-most-recent-config))
+    ;;	    (progn
+    (setq obvz-most-recent-config obvz-current-config)
+    (zmq-send sock (json-encode-alist obvz-current-config))
+		;; )
+    ;; )
     )
 
 
