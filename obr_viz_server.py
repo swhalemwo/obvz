@@ -7,12 +7,8 @@ from PyQt5.QtWidgets import QPushButton, QApplication, QWidget
 from PyQt5.QtCore import QTimer, Qt, QObject
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont, QFontMetrics
-# from sklearn.metrics.pairwise import euclidean_distances
-# from scipy.spatial import distance as dist
 
 from time import sleep, time
-
-
 
 
 from argparse import ArgumentParser
@@ -199,6 +195,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.top= 0
         self.left= 0
         self.InitWindow()
+        self.draw_arrow_toggle = 1
 
         # print(self.width, self.height)
 
@@ -232,6 +229,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.adj = [] # adjacency list? 
         self.node_names = []
         self.link_str = ""
+        self.node_str = ""
         self.node_texts_raw = {}
         self.node_texts = {}
         self.links = []
@@ -283,6 +281,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.adj = [] # adjacency list? 
         self.node_names = []
         self.link_str = ""
+        self.node_str = ""
         self.node_texts = {}
         self.links = []
         self.tpls = []
@@ -302,6 +301,10 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         # main parsing/updates has to happen here
         new_graph_dict = json.loads(new_graph_str)
     
+        if "draw_arrow_toggle" in new_graph_dict.keys():
+            self.draw_arrow_toggle = new_graph_dict['draw_arrow_toggle']
+
+
         # only command is to redraw
         if list(new_graph_dict.keys())[0] == 'redraw':
             self.redraw_layout(new_graph_dict['redraw'])
@@ -315,16 +318,29 @@ class ZeroMQ_Window(QtWidgets.QWidget):
                 self.reset()
 
             update_me = 0
-            # check if graph structure has changed
+            
+            links_changed = 0
+            nodes_changed = 0
+
             if self.link_str != new_graph_dict['links'] and new_graph_dict['links'] != None:
+                links_changed = 1
+            
+            if self.node_str != new_graph_dict['nodes'] and new_graph_dict['nodes'] !=  None:
+                nodes_changed = 1
+                
+            # check if graph structure has changed
+            if links_changed == 1 or nodes_changed == 1:
                 logging.info('graph has changed')
-                self.update_graph(new_graph_dict['links'])
+                self.update_graph(new_graph_dict['links'], new_graph_dict['nodes'])
+                # self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])                
                 self.link_str = new_graph_dict['links']
+                self.node_str = new_graph_dict['nodes']
                 update_me = 1
 
             # check if node texts have been modified
             if self.node_texts_raw != new_graph_dict['node_texts'] and new_graph_dict['node_texts'] != None:
                 logging.info('node texts have changed')
+                logging.info(self.g.nodes())
                 self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])
                 self.node_texts_raw = new_graph_dict['node_texts']
                 update_me = 1
@@ -342,7 +358,6 @@ class ZeroMQ_Window(QtWidgets.QWidget):
                 self.update()
                 # print(new_link_str)
 
-    # def update_graph(self, new_link_str):
 
 
     def get_node_text_dimensions(self, fm_nt, node_text):
@@ -403,7 +418,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
 
 
-    def update_graph(self, new_links):
+    def update_graph(self, new_links, new_nodes):
         
         """set new links and nodes"""
 
@@ -420,18 +435,19 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         tpls_to_del = list(set(self.tpls) - set(new_tpls))
         
         # not clear if links (one string) are that relevant, tuples seem to more convenient to work with tbh
-        old_tpls = self.tpls
+        # old_tpls = self.tpls
         self.tpls = new_tpls
         # self.links = new_links
         
-        old_nodes = []
-        for l in old_tpls:
-            old_nodes.append(l[0])
-            old_nodes.append(l[1])
+        # old_nodes = []
+        # for l in old_tpls:
+        #     old_nodes.append(l[0])
+        #     old_nodes.append(l[1])
 
-        old_nodes = set(old_nodes)
+        # old_nodes = set(old_nodes)
+        old_nodes = self.g.nodes()
 
-        new_nodes = []
+        # new_nodes = []
         for l in self.tpls:
             new_nodes.append(l[0])
             new_nodes.append(l[1])
@@ -442,7 +458,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         nodes_to_add = list(new_nodes - old_nodes)
 
         logging.info(['new tpls: ', new_tpls])
-        logging.info(['old tpls: ', old_tpls])
+        # logging.info(['old tpls: ', old_tpls])
 
         logging.info(["links_to_add: ", tpls_to_add])
         logging.info(["links_to_del: ", tpls_to_del])
@@ -667,8 +683,10 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         
         
         qp.drawLine(start_px, start_py, arw_goal_x, arw_goal_y)
-        qp.drawLine(ar1_x, ar1_y, arw_goal_x, arw_goal_y)
-        qp.drawLine(ar2_x, ar2_y, arw_goal_x, arw_goal_y)
+        
+        if self.draw_arrow_toggle == True:
+            qp.drawLine(ar1_x, ar1_y, arw_goal_x, arw_goal_y)
+            qp.drawLine(ar2_x, ar2_y, arw_goal_x, arw_goal_y)
 
 
     def paintEvent(self, event):
