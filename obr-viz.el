@@ -131,6 +131,7 @@
 	  (node-texts ())
 	  (node-text-alist ())
 	  (graph-dict ())
+	  (current-node ())
 	  )
 	;; get hierarchical relations
 
@@ -144,7 +145,7 @@
 	    (setq rel-nodes (cdr rel-nodes))
 	    )
 	;; (
-	(message "children there")
+	;; (message "children there")
 
 	;; (setq uniq-nodes-prep (counter (flatten-list total-nodes)))
 	;; (setq uniq-nodes (mapcar 'car uniq-nodes-prep))
@@ -157,12 +158,12 @@
 	(push friend-links total-links)
 	(setq all-links (flatten-list total-links))
 	(setq link-string (mapconcat 'identity all-links ";"))
-	(message "all links there")
+	;; (message "all links there")
 
 	;; handle nodes
 	(setq friend-nodes (car friend-res))
 	(setq uniq-nodes (remove-duplicates (flatten-list (list uniq-nodes friend-nodes))))
-	(message "all nodes there")
+	;; (message "all nodes there")
 	
 	;; (setq node-string (mapconcat 'identity uniq-nodes ";"))
 	;; include (or not) node texts
@@ -173,12 +174,21 @@
 		    )
 	    (setq node-text-alist (mapcar* #'cons uniq-nodes (make-list (len uniq-nodes) "")))
 	    )
-	(message "node texts there")
+	;; (message "node texts there")
+
+	;; get current node
+	(if (equal obvz-highlight-current-node t)
+		(setq current-node (org-brain-entry-at-pt))
+	    (setq current-node nil))
+	    
+		
 
 	(setq graph-dict
 	      `(("links" . ,all-links)
-		("cur_node" . ,(org-brain-entry-at-pt))
+		("nodes" . ,uniq-nodes)
+		("cur_node" . ,current-node)
 		("node_texts" . ,node-text-alist)
+		("draw_arrow_toggle" . ,obvz-draw-arrow)
 		)
 	      )
 	graph-dict
@@ -224,12 +234,12 @@
     (interactive)
 
     (setq obvz-current-config (obvz-create-graph-dict obvz-include-node-texts))
-    ;; (if (not (equal obvz-current-config obvz-most-recent-config))
-    ;;	    (progn
-    (setq obvz-most-recent-config obvz-current-config)
-    (zmq-send sock (json-encode-alist obvz-current-config))
-		;; )
-    ;; )
+    (if (not (equal obvz-current-config obvz-most-recent-config))
+	    (progn
+		(setq obvz-most-recent-config obvz-current-config)
+		(zmq-send sock (json-encode-alist obvz-current-config))
+		)
+    )
     )
 
 
@@ -240,12 +250,15 @@
     )
 
 
-(add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain change
+(add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain
 
 (setq obvz-dir "~/Dropbox/personal_stuff/obr-viz/")
 (setq obvz-include-node-texts t)
 (setq obvz-only-use-annotated-edges t)
 (setq obvz-most-recent-config ())
+(setq obvz-draw-arrow t)
+(setq obvz-highlight-current-node t)
+
 
 (define-key org-brain-visualize-mode-map "N" 'obvz-switch-node-text-inclusion)
 (define-key org-brain-visualize-mode-map "R" 'obvz-reposition-nodes)
