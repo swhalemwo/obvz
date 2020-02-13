@@ -1,41 +1,73 @@
-* visualizing org-brain relationships using EAF
-
-
+* obvz: visualizing org-brain relationships
 
 /currently rewriting most code for easier access (switching from graph-tool no networkx, testing additional communication interfaces) -> stuff is probably broken/
 
+
+keyboard-driven concept mapping visualization in emacs, featuring
+- non-overlapping nodes
+- animated transitions that reuse node positions
+- toggleable node text
+
+
+
 ** Requirements
 - [[https://github.com/Kungsgeten/org-brain][org-brain]]
-- [[https://github.com/manateelazycat/emacs-application-framework/][EAF]] (some programs in EAF don't run for me, but that doesn't seem to be a problem)
-- [[https://graph-tool.skewed.de][graph-tool]] (unlike graphviz, it allows to start layout calculations from predefined coordinates, which results in relatively little node re-arrangement)
-- some other python libs
-
+- [[https://zeromq.org/][zmq]] bindings for [[https://zeromq.org/languages/python/][python]] and [[https://github.com/dzop/emacs-zmq][elisp]] 
+- PyQt5, numpy, networkx, Pillow
 
 ** Installation:
-- create folder emacs-application-framework/app/obr-test, copy/symlink (=buffer.py=) there
-- load the (=obr-viz.el=) functions/variables (it's not really a package yet)
+- load the =obr-viz.el= functions/variables (it's not a complete package yet)
+- set =obvz-dir= to the obvz directory
+
+** Start
+- run =M-x obviz-start= to open a PyQt window (or run obvz.py in a terminal)
 
 ** Usage:
-- in org-brain, pin/unpin nodes whose links are of interest
-- run obr-viz (bound to =G=) to load the links into =eaf-var-list=
-  (visualization does not work if =eaf-var-list= has no links)
-- run =M-x eaf-obr-test= to start the python process that visualizes the links in a EAF window thingy
-- when updating the links by pinning/unpinning or adding/removing children/friends, update the visualization with obr-viz (=G=)
-- generate a new layout with obr-viz-redraw (=R=)
+- in org-brain, pin/unpin nodes to visualize 
+  - the node itself
+  - friends
+  - children (parent-child relationships are visualized except when the parent starts with "cls_" (class))
+  - friends of children
+- changes in the graph are mostly updated automatically, with two exceptions:
+  - changes of the text body of node, 
+  - restarting obvz after it has been closed a previous time 
+  - in these cases, the layout can be updated with =U= (=obvz-update-graph=)
+- generate a new layout (without changes in the graph) with =R= (=obvz-reposition-nodes=): 
+  - normal execution does minor modifications (it re-applies the [[https://en.wikipedia.org/wiki/Force-directed_graph_drawing][force-directed drawing algorithm]] to the current layout); 
+  - execution with =C-u= generates a new layout based on random starting positions
+- switch display of node body text on and off with =N= (=obvz-switch-node-text-inclusion=)
+  - the node body text follows the same convention as in org-brain, i.e. file text until first headline (or markup symbol)
+
+
+** Customization
+- =obvz-only-use-annotated-edges=: whether friend links are only included when annotated (default =t=)
+- =obvz-draw-arrow=: whether arrowheads are drawn at the tips of edges (default =t=)
+- =obvz-highlight-current-node=: whether the currently selected node is highlighted (default =t=)
 
 
 ** Particularities/Limitations:
-- edges of children of pins are visualized as well
-- parent-child relationships are visualized unless the parent starts with "cls_" (class)
-- only annotated edges are visualized; this allows to use directed edges by default
-- updates to the visualization have to be manually triggered
-- selection through pins seems a bit wonky, may be switched to categories/query language/something else
-- if the network does not constitute a component, the individual components are pushed strongly apart by the layout algorithm
-
-*Disclaimer*: This is the first time I'm trying to develop something like an application, as well as using Elisp and GUIs.
+- on the python side, all edges are modeled as directed
+  - however, setting =obvz-draw-arrow= to nil creates a decent impression of an undirected graph 
+- node body text is (currently) not being automatically wrapped; it has to be manually ensured that nodes do not become too wide or long
+- the layout algorithm can be compiled manually with [[https://github.com/serge-sans-paille/pythran][pythran]] (the resulting .so file then has to be moved into the top directory)
 
 
-** Example: Twin Peaks character relations based on some episodes of S1
+** Future Ideas
+- multiedges, hyperedges -> rethink data model, enhance node/edge selection (e.g. documents of links)
+- edge labels visualization
+- prevent edge overlap in reciprocal relations
+- node properties visualization
+- more node shapes
+- more layout algorithms, especially hierarchical (like graphviz dot)
+- rewrite layout algorithm in pure C/C++
+- fix/manually move nodes
+- re-integrate with EAF
+- minimize edges crossing nodes: repellent edges? 
+- virtual windows to quickly switch between graphs
+- save/load layouts, rendering to image
 
-[[file:demo/obr2.gif]]
+*Disclaimer*: This is my first project of an application, as well as using Elisp and GUIs. Feedback, feature suggestions and bug reports are very welcome!
+
+(/a previous version used the promising [[https://github.com/manateelazycat/emacs-application-framework][EAF]], however testing/debugging seemed to be easier with zmq. i hope to implement obvz as an EAF app at a later point in time./)
+
 
