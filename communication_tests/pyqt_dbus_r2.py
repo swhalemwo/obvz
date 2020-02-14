@@ -10,24 +10,16 @@ import sys
  
 class QDBusServer(QObject):
     
-    message = QtCore.pyqtSignal(str)
+    # message = QtCore.pyqtSignal(str)
 
     def __init__(self):
         QObject.__init__(self)
         self.dbusAdaptor = QDBusServerAdapter(self)
-        # self.message.connect(self.func2)
-        # self.dbusAdaptor.message.connect(self.signal_received)
- 
-    # def signal_received(self, some_str):
-    #     print('gotcha' + some_str)
 
-    def func2(self):
-        print('parent time')
-        self.message.emit('ddd')
-        # self.parent().sig2()
- 
+        
 class QDBusServerAdapter(QtDBus.QDBusAbstractAdaptor):
-    
+    message_base = QtCore.pyqtSignal(str)
+   
     QtCore.Q_CLASSINFO("D-Bus Interface", "com.qtpad.dbus")
     QtCore.Q_CLASSINFO("D-Bus Introspection",
     '  <interface name="com.qtpad.dbus">\n'
@@ -37,40 +29,34 @@ class QDBusServerAdapter(QtDBus.QDBusAbstractAdaptor):
     '    </method>\n'
     '  </interface>\n')
  
-    message = QtCore.pyqtSignal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
-        # self.setAutoRelaySignals(True)
-
-
+        
     @pyqtSlot(str, result=str)
     def echo(self, phrase):
-        self.message.emit(str(phrase))
-        print("parse(" + phrase + ")")
-        self.parent().func2()
+        self.message_base.emit(phrase)
+        print("phrase: " + phrase + " received in Adaptor object")
+        
 
 class main_prog(QWidget):
     
-    bus = QtDBus.QDBusConnection.sessionBus()
-    server = QDBusServer()
-    bus.registerObject('/cli', server)
-    bus.registerService('com.qtpad.dbus')
 
     def __init__(self):
         super().__init__()
-        # QWidget.__init__(self)
         self.counter = 0
 
-    
-        # self.server.message.connect(self.sig2)
-        self.server.message.connect(self.signal_received)
+        self.bus = QtDBus.QDBusConnection.sessionBus()
+        self.server = QDBusServer()
+        self.bus.registerObject('/cli', self.server)
+        self.bus.registerService('com.qtpad.dbus')
 
+    
+        self.server.dbusAdaptor.message_base.connect(self.signal_received)
 
         self.paint_timer = QtCore.QTimer(self, timeout=self.timer_func, interval=200)
         self.paint_timer.start()
         print('inited')
-
 
         
     def timer_func(self):
@@ -78,19 +64,9 @@ class main_prog(QWidget):
         self.counter +=1
     
 
-    # def sig2(self):
-    #     print('back in main')
-    #     self.counter = 0
-
     def signal_received(self, some_str):
-        print('gotcha')
+        print('phrase ' + some_str + ' received in main object')
         self.counter = 0
-        # self.increase_ctr()
-
-    # def increase_ctr(self):
-    #     print('time to increase counter')
-    #     print(str(self.counter))
-    #     self.counter +=1
 
 
 
@@ -99,9 +75,5 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     x = main_prog()
-
-    print(type(x))
-
-    
 
     sys.exit(app.exec_())
