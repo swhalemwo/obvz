@@ -27,7 +27,7 @@
 
 
 (defun children-specific-depth-let (node depth)
-    "retrieves children and hierarchical links of $node to level $depth"
+    "retrieves children and hierarchical links of node $node to level $depth"
     (let ((nodes-upper-level (list node))
 	  (all-nodes (list node))
 	  (all-links ())
@@ -122,8 +122,10 @@
 	  (total-links ())
 	  (node-res ())
 	  (rel-node ())
+	  (uniq-nodes ())
 	  (uniq-nodes-hierarchy ())
 	  (friend-res ())
+	  (class-nodes ())
 	  (friend-links ())
 	  (friend-nodes ())
 	  (all-links ())
@@ -135,25 +137,29 @@
 	  )
 	;; get hierarchical relations
 
+	
 	(while rel-nodes
-	    (setq rel-node (car rel-nodes))
 	    
+	    (setq rel-node (car rel-nodes))
+	    ;; (print rel-node)
+
 	    (setq node-res (children-specific-depth-let rel-node 8))
 	    (push (car node-res) total-nodes)
 	    (push (cdr node-res) total-links)
 
 	    (setq rel-nodes (cdr rel-nodes))
+	    
 	    )
-	;; (
-	;; (message "children there")
 
-	;; (setq uniq-nodes-prep (counter (flatten-list total-nodes)))
-	;; (setq uniq-nodes (mapcar 'car uniq-nodes-prep))
-
+	;; (print total-nodes)
 	(setq uniq-nodes (remove-duplicates (flatten-list total-nodes)))
+	;; (print uniq-nodes)
+
+	
+
 
 	;; handle links
-	(setq friend-res (obvz-get-friend-links uniq-nodes))
+	(setq friend-res (obvz-get-friend-links (append uniq-nodes class-nodes)))
 	(setq friend-links (cdr friend-res))
 	(push friend-links total-links)
 	(setq all-links (flatten-list total-links))
@@ -163,6 +169,11 @@
 	;; handle nodes
 	(setq friend-nodes (car friend-res))
 	(setq uniq-nodes (remove-duplicates (flatten-list (list uniq-nodes friend-nodes))))
+	
+	;; delete cls_nodes from being there if alone
+	;; not clear if effective: what if referred to as friend? 
+	(setq uniq-nodes (cl-delete-if (lambda (k) (string-match-p "cls_" k)) uniq-nodes))
+	
 	;; (message "all nodes there")
 	
 	;; (setq node-string (mapconcat 'identity uniq-nodes ";"))
@@ -223,7 +234,8 @@
 		    (setq obvz-redraw-alist '(("redraw" . "soft")))
 		(setq obvz-redraw-alist '(("redraw" . "hard")))
 		)
-	(zmq-send sock (json-encode-alist obvz-redraw-alist))
+	;; (zmq-send sock (json-encode-alist obvz-redraw-alist))
+	(obvz-send-to-python (json-encode-alist obvz-redraw-alist))
 	)
     )
 
@@ -236,7 +248,8 @@
     (if (not (equal obvz-current-config obvz-most-recent-config))
 	    (progn
 		(setq obvz-most-recent-config obvz-current-config)
-		(zmq-send sock (json-encode-alist obvz-current-config))
+		;; (zmq-send sock (json-encode-alist obvz-current-config))
+		(obvz-send-to-python (json-encode-alist obvz-current-config))
 		)
     )
     )
@@ -244,13 +257,39 @@
 
 (defun obvz-start ()
     (interactive)
-    (shell-command (concat "cd "obvz-dir " && python3 obr_viz_server.py & "))
+    (shell-command (concat "cd "obvz-dir " && python3 obr_viz_server.py " obvz-connection-type " & "))
     (setq obvz-most-recent-config ())
     )
 
 
+
+;; connection functions
+
+(defun obvz-send-to-python (dict-str-to-send)
+    """general function to send stuff python, input is json-encoded dict string"""
+    (when (equal obvz-connection-type "dbus")
+	(obvz-dbus-caller "echo" dict-str-to-send))
+    (when (equal obvz-connection-type "zmq")
+	(zmq-send sock dict-str-to-send))
+    )
+
+(defun obvz-dbus-caller (method &rest args)
+  "call the tomboy method METHOD with ARGS over dbus"
+  (apply 'dbus-call-method 
+     :session                      ; use the session (not system) bus
+    "com.qtpad.dbus"                ; service name
+    "/cli"                         ; path name
+    "com.qtpad.dbus"               ; interface name
+    method args))
+	
+	
+	    
+
 (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain
 
+
+(setq obvz-connection-type "dbus")
+(setq obvz-connection-type "zmq")
 (setq obvz-dir "~/Dropbox/personal_stuff/obr-viz/")
 (setq obvz-include-node-texts t)
 (setq obvz-only-use-annotated-edges t)
