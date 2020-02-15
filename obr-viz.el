@@ -229,7 +229,6 @@
 
 
 
-
 (defun obvz-update-graph ()
     (interactive)
 
@@ -268,6 +267,31 @@
 (setq sock (zmq-socket (zmq-context) zmq-PUB))
 (zmq-bind sock "tcp://127.0.0.1:5556")
 
-    
+(zmq-send sock "LOL")
 
-some test
+    
+;; * dbus tests
+
+
+
+(setq ECHO_BUS_NAME "com.qtpad.dbus")
+(setq ECHO_OBJECT_PATH "/cli")
+(setq ECHO_INTERFACE "com.qtpad.dbus")
+
+
+
+(require 'dbus)
+(defun djcb-call-tomboy (method &rest args)
+  "call the tomboy method METHOD with ARGS over dbus"
+  (apply 'dbus-call-method 
+    :session                            ; use the session (not system) bus
+    ECHO_BUS_NAME       ;; "org.gnome.Tomboy"      ; service name
+    ECHO_OBJECT_PATH       ;; "/org/gnome/Tomboy/RemoteControl"   ; path name
+    ECHO_INTERFACE ;; "org.gnome.Tomboy.RemoteControl"    ; interface name
+    method args))
+
+(djcb-call-tomboy "echo" "jjj")
+
+(djcb-call-tomboy "echo" (json-encode-alist obvz-current-config))
+
+

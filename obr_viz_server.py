@@ -4,8 +4,8 @@ import zmq
 import json
 
 from PyQt5.QtWidgets import QPushButton, QApplication, QWidget
-from PyQt5.QtCore import QTimer, Qt, QObject
-from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5.QtCore import QTimer, Qt, QObject, pyqtSlot
+from PyQt5 import QtCore, QtWidgets, QtGui, QtDBus
 from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont, QFontMetrics
 
 from time import sleep, time
@@ -32,7 +32,44 @@ from PIL import ImageFont
 from ovlp_func import pythran_itrtr
 
 
+
+
 app = QApplication(sys.argv)
+
+# ---------- dbus connection start -------
+
+class QDBusServer(QObject):
+    
+    # message = QtCore.pyqtSignal(str)
+
+    def __init__(self):
+        QObject.__init__(self)
+        self.dbusAdaptor = QDBusServerAdapter(self)
+
+        
+class QDBusServerAdapter(QtDBus.QDBusAbstractAdaptor):
+    message_base = QtCore.pyqtSignal(str)
+   
+    QtCore.Q_CLASSINFO("D-Bus Interface", "com.qtpad.dbus")
+    QtCore.Q_CLASSINFO("D-Bus Introspection",
+    '  <interface name="com.qtpad.dbus">\n'
+    '    <property name="name" type="s" access="read"/>\n'
+    '    <method name="echo">\n'
+    '      <arg direction="in" type="s" name="phrase"/>\n'
+    '    </method>\n'
+    '  </interface>\n')
+ 
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+    @pyqtSlot(str, result=str)
+    def echo(self, phrase):
+        self.message_base.emit(phrase)
+        # print("phrase: " + phrase + " received in Adaptor object")
+        
+
+# ---------- dbus connection end -------
 
 def get_edge_point_delta(wd, ht, angle):
     """get attach point of edge for node"""
@@ -242,16 +279,29 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         self.g = nx.DiGraph()
 
-        self.thread = QtCore.QThread()
-        self.zeromq_listener = ZeroMQ_Listener()
-        self.zeromq_listener.moveToThread(self.thread)
-        self.thread.started.connect(self.zeromq_listener.loop)
+        # zmq connection 
+        # self.thread = QtCore.QThread()
+        # self.zeromq_listener = ZeroMQ_Listener()
+        # self.zeromq_listener.moveToThread(self.thread)
+        # self.thread.started.connect(self.zeromq_listener.loop)
+        # self.zeromq_listener.message.connect(self.signal_received)
+        # QtCore.QTimer.singleShot(0, self.thread.start)
+
+        
+        # dbus connection 
+        self.bus = QtDBus.QDBusConnection.sessionBus()
+        self.server = QDBusServer()
+        self.bus.registerObject('/cli', self.server)
+        self.bus.registerService('com.qtpad.dbus')
+        self.server.dbusAdaptor.message_base.connect(self.signal_received)
+
+        
         self.ctr = 0
         self.paint_timer = QtCore.QTimer(self, timeout=self.timer_func, interval=self.update_interval)
         
-        self.zeromq_listener.message.connect(self.signal_received)
 
-        QtCore.QTimer.singleShot(0, self.thread.start)
+
+        
         
 
     def InitWindow(self):
@@ -297,7 +347,7 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
     
     def signal_received(self, new_graph_str):
-        logging.info('signal receiving')
+        logging.info(' receiving')
         # main parsing/updates has to happen here
         new_graph_dict = json.loads(new_graph_str)
     
