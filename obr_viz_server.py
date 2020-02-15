@@ -36,40 +36,6 @@ from ovlp_func import pythran_itrtr
 
 app = QApplication(sys.argv)
 
-# ---------- dbus connection start -------
-
-class QDBusServer(QObject):
-    
-    # message = QtCore.pyqtSignal(str)
-
-    def __init__(self):
-        QObject.__init__(self)
-        self.dbusAdaptor = QDBusServerAdapter(self)
-
-        
-class QDBusServerAdapter(QtDBus.QDBusAbstractAdaptor):
-    message_base = QtCore.pyqtSignal(str)
-   
-    QtCore.Q_CLASSINFO("D-Bus Interface", "com.qtpad.dbus")
-    QtCore.Q_CLASSINFO("D-Bus Introspection",
-    '  <interface name="com.qtpad.dbus">\n'
-    '    <property name="name" type="s" access="read"/>\n'
-    '    <method name="echo">\n'
-    '      <arg direction="in" type="s" name="phrase"/>\n'
-    '    </method>\n'
-    '  </interface>\n')
- 
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-    @pyqtSlot(str, result=str)
-    def echo(self, phrase):
-        self.message_base.emit(phrase)
-        # print("phrase: " + phrase + " received in Adaptor object")
-        
-
-# ---------- dbus connection end -------
 
 def get_edge_point_delta(wd, ht, angle):
     """get attach point of edge for node"""
@@ -194,6 +160,40 @@ def rect_points(r):
     return np.array([p1, p2, p3, p4])
 
 
+# ---------- dbus connection start -------
+
+class QDBusServer(QObject):
+    
+    def __init__(self):
+        QObject.__init__(self)
+        self.dbusAdaptor = QDBusServerAdapter(self)
+
+        
+class QDBusServerAdapter(QtDBus.QDBusAbstractAdaptor):
+    message_base = QtCore.pyqtSignal(str)
+   
+    QtCore.Q_CLASSINFO("D-Bus Interface", "com.qtpad.dbus")
+    QtCore.Q_CLASSINFO("D-Bus Introspection",
+    '  <interface name="com.qtpad.dbus">\n'
+    '    <property name="name" type="s" access="read"/>\n'
+    '    <method name="echo">\n'
+    '      <arg direction="in" type="s" name="phrase"/>\n'
+    '    </method>\n'
+    '  </interface>\n')
+ 
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+    @pyqtSlot(str, result=str)
+    def echo(self, phrase):
+        self.message_base.emit(phrase)
+        # print("phrase: " + phrase + " received in Adaptor object")
+        
+
+# ---------- dbus connection end -------
+
+
 
 class ZeroMQ_Listener(QtCore.QObject):
 
@@ -225,8 +225,8 @@ class ZeroMQ_Listener(QtCore.QObject):
             # that would be so weird
 
 
-class ZeroMQ_Window(QtWidgets.QWidget):
-    def __init__(self):
+class obvz_window(QtWidgets.QWidget):
+    def __init__(self, con_type):
         super().__init__()
 
         self.top= 0
@@ -262,8 +262,8 @@ class ZeroMQ_Window(QtWidgets.QWidget):
         self.step = 6.0 # how many steps realignment takes
         self.update_interval = 40
         
-
-        self.adj = [] # adjacency list? 
+        # graph information
+        self.adj = [] # adjacency list
         self.node_names = []
         self.link_str = ""
         self.node_str = ""
@@ -279,29 +279,27 @@ class ZeroMQ_Window(QtWidgets.QWidget):
 
         self.g = nx.DiGraph()
 
-        # zmq connection 
-        # self.thread = QtCore.QThread()
-        # self.zeromq_listener = ZeroMQ_Listener()
-        # self.zeromq_listener.moveToThread(self.thread)
-        # self.thread.started.connect(self.zeromq_listener.loop)
-        # self.zeromq_listener.message.connect(self.signal_received)
-        # QtCore.QTimer.singleShot(0, self.thread.start)
+        # connections
+        if con_type == 'zmq':
+            self.thread = QtCore.QThread()
+            self.zeromq_listener = ZeroMQ_Listener()
+            self.zeromq_listener.moveToThread(self.thread)
+            self.thread.started.connect(self.zeromq_listener.loop)
+            self.zeromq_listener.message.connect(self.signal_received)
+            QtCore.QTimer.singleShot(0, self.thread.start)
 
-        
-        # dbus connection 
-        self.bus = QtDBus.QDBusConnection.sessionBus()
-        self.server = QDBusServer()
-        self.bus.registerObject('/cli', self.server)
-        self.bus.registerService('com.qtpad.dbus')
-        self.server.dbusAdaptor.message_base.connect(self.signal_received)
+        if con_type == 'dbus':
+            logging.info('connection type is dbus')
+            # dbus connection 
+            self.bus = QtDBus.QDBusConnection.sessionBus()
+            self.server = QDBusServer()
+            self.bus.registerObject('/cli', self.server)
+            self.bus.registerService('com.qtpad.dbus')
+            self.server.dbusAdaptor.message_base.connect(self.signal_received)
 
         
         self.ctr = 0
         self.paint_timer = QtCore.QTimer(self, timeout=self.timer_func, interval=self.update_interval)
-        
-
-
-        
         
 
     def InitWindow(self):
@@ -811,6 +809,7 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument('-v', default=False, action='store_true')
+    parser.add_argument('con_type')
     args = parser.parse_args()
 
     if args.v == True:
@@ -819,7 +818,7 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(logging.WARNING)
 
 
-    mw = ZeroMQ_Window()
+    mw = obvz_window(args.con_type)
     sys.exit(app.exec_())
     
 
