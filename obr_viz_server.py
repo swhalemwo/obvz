@@ -1,11 +1,12 @@
 import time 
-import zmq
 
 import json
 
 from PyQt5.QtWidgets import QPushButton, QApplication, QWidget
 from PyQt5.QtCore import QTimer, Qt, QObject, pyqtSlot
-from PyQt5 import QtCore, QtWidgets, QtGui, QtDBus
+from PyQt5 import QtCore, QtWidgets, QtGui
+
+
 from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont, QFontMetrics
 
 from time import sleep, time
@@ -40,7 +41,7 @@ app = QApplication(sys.argv)
 def get_edge_point_delta(wd, ht, angle):
     """get attach point of edge for node"""
 
-    # print(angle)
+    # logging.info(['angle: ', angle])
 
     if angle >= 0 and angle <= math.pi/2: sector = 1
     elif angle > math.pi/2: sector = 2
@@ -160,69 +161,9 @@ def rect_points(r):
     return np.array([p1, p2, p3, p4])
 
 
-# ---------- dbus connection start -------
-
-class QDBusServer(QObject):
-    
-    def __init__(self):
-        QObject.__init__(self)
-        self.dbusAdaptor = QDBusServerAdapter(self)
-
-        
-class QDBusServerAdapter(QtDBus.QDBusAbstractAdaptor):
-    message_base = QtCore.pyqtSignal(str)
-   
-    QtCore.Q_CLASSINFO("D-Bus Interface", "com.qtpad.dbus")
-    QtCore.Q_CLASSINFO("D-Bus Introspection",
-    '  <interface name="com.qtpad.dbus">\n'
-    '    <property name="name" type="s" access="read"/>\n'
-    '    <method name="echo">\n'
-    '      <arg direction="in" type="s" name="phrase"/>\n'
-    '    </method>\n'
-    '  </interface>\n')
- 
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-    @pyqtSlot(str, result=str)
-    def echo(self, phrase):
-        self.message_base.emit(phrase)
-        # print("phrase: " + phrase + " received in Adaptor object")
-        
-
-# ---------- dbus connection end -------
 
 
 
-class ZeroMQ_Listener(QtCore.QObject):
-
-    message = QtCore.pyqtSignal(str)
-    
-    def __init__(self):
-
-        QtCore.QObject.__init__(self)
-        
-        # Socket to talk to server
-        context = zmq.Context()
-        self.socket = context.socket(zmq.SUB)
-
-        self.socket.connect ("tcp://localhost:5556")
-        logging.info("connected to server")
-
-
-        self.socket.setsockopt(zmq.SUBSCRIBE, b'')
-        
-        self.running = True
-
-    def loop(self):
-        while self.running:
-            string = self.socket.recv()
-            self.message.emit(str(string, 'utf-8'))
-
-            
-            # do the update stuff here? 
-            # that would be so weird
 
 
 class obvz_window(QtWidgets.QWidget):
@@ -704,8 +645,26 @@ class obvz_window(QtWidgets.QWidget):
 
         angle = math.atan2((p2x - p1x), (p2y - p1y))
         angle_rev = math.atan2((p1x - p2x), (p1y - p2y))
+            
 
-        ar_start_pt_d = get_edge_point_delta(p1_wd, p1_ht, angle)
+        try:
+            ar_start_pt_d = get_edge_point_delta(p1_wd, p1_ht, angle)
+            
+        except:
+            print('p1x: ', p1x)
+            print('p1y: ', p1y)
+            print('p2x: ', p2x)
+            print('p2y: ', p2y)
+
+            print('p1_wd: ', p1_wd)
+            print('p1_ht: ', p1_ht)
+            print('p2_wd: ', p2_wd)
+            print('p2_ht: ', p2_ht)
+            
+            print('angle: ', angle)
+            ar_start_pt_d = get_edge_point_delta(p1_wd, p1_ht, angle)
+
+            
         start_px = p1x + ar_start_pt_d[0]
         start_py = p1y + ar_start_pt_d[1]
 
@@ -811,6 +770,77 @@ if __name__ == "__main__":
     parser.add_argument('-v', default=False, action='store_true')
     parser.add_argument('con_type')
     args = parser.parse_args()
+    con_type = args.con_type
+    
+    if con_type == 'zmq':
+        import zmq
+
+        class ZeroMQ_Listener(QtCore.QObject):
+
+            message = QtCore.pyqtSignal(str)
+
+            def __init__(self):
+
+                QtCore.QObject.__init__(self)
+
+                # Socket to talk to server
+                context = zmq.Context()
+                self.socket = context.socket(zmq.SUB)
+
+                self.socket.connect ("tcp://localhost:5556")
+                logging.info("connected to server")
+
+
+                self.socket.setsockopt(zmq.SUBSCRIBE, b'')
+
+                self.running = True
+
+            def loop(self):
+                while self.running:
+                    string = self.socket.recv()
+                    self.message.emit(str(string, 'utf-8'))
+
+
+                    # do the update stuff here? 
+                    # that would be so weird
+
+        
+    if con_type == 'dbus':
+        from PyQt5 import QtDBus
+
+        # ---------- dbus connection start -------
+
+        class QDBusServer(QObject):
+
+            def __init__(self):
+                QObject.__init__(self)
+                self.dbusAdaptor = QDBusServerAdapter(self)
+
+
+        class QDBusServerAdapter(QtDBus.QDBusAbstractAdaptor):
+            message_base = QtCore.pyqtSignal(str)
+
+            QtCore.Q_CLASSINFO("D-Bus Interface", "com.qtpad.dbus")
+            QtCore.Q_CLASSINFO("D-Bus Introspection",
+            '  <interface name="com.qtpad.dbus">\n'
+            '    <property name="name" type="s" access="read"/>\n'
+            '    <method name="echo">\n'
+            '      <arg direction="in" type="s" name="phrase"/>\n'
+            '    </method>\n'
+            '  </interface>\n')
+
+
+            def __init__(self, parent):
+                super().__init__(parent)
+
+            @pyqtSlot(str, result=str)
+            def echo(self, phrase):
+                self.message_base.emit(phrase)
+                # print("phrase: " + phrase + " received in Adaptor object")
+
+
+        # ---------- dbus connection end -------
+
 
     if args.v == True:
         logging.getLogger().setLevel(logging.INFO)
@@ -818,7 +848,7 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(logging.WARNING)
 
 
-    mw = obvz_window(args.con_type)
+    mw = obvz_window(con_type)
     sys.exit(app.exec_())
     
 
