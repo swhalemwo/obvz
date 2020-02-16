@@ -313,8 +313,13 @@ class obvz_window(QtWidgets.QWidget):
 
             if self.link_str != new_graph_dict['links'] and new_graph_dict['links'] != None:
                 links_changed = 1
+                logging.info('links have changed')
             
             if self.node_str != new_graph_dict['nodes'] and new_graph_dict['nodes'] !=  None:
+                logging.info(['self.node_str: ', self.node_str])
+                logging.info(["new_graph_dict['nodes']: ", new_graph_dict['nodes']])
+                
+                logging.info('nodes have changed')
                 nodes_changed = 1
                 
             # check if graph structure has changed
@@ -324,6 +329,7 @@ class obvz_window(QtWidgets.QWidget):
                 # self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])                
                 self.link_str = new_graph_dict['links']
                 self.node_str = new_graph_dict['nodes']
+                logging.info(['new self.node_str: ', self.node_str])
                 update_me = 1
 
             # check if node texts have been modified
@@ -407,7 +413,7 @@ class obvz_window(QtWidgets.QWidget):
 
 
 
-    def update_graph(self, new_links, new_nodes):
+    def update_graph(self, new_links, incoming_nodes):
         
         """set new links and nodes"""
 
@@ -436,7 +442,9 @@ class obvz_window(QtWidgets.QWidget):
         # old_nodes = set(old_nodes)
         old_nodes = self.g.nodes()
 
-        # new_nodes = []
+        # prevent modification of original node object
+        new_nodes = incoming_nodes.copy()
+
         for l in self.tpls:
             new_nodes.append(l[0])
             new_nodes.append(l[1])

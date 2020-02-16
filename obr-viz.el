@@ -189,11 +189,13 @@
 
 	;; (print total-nodes)
 	(setq uniq-nodes (remove-duplicates (flatten-list total-nodes)))
+
+	(cl-delete-if (lambda (k) (string-match-p "cls_" k)) uniq-nodes)
+
+
 	;; (print uniq-nodes)
-
+	;; (setq uniq-nodes (cl-delete-if (lambda (k) (string-match-p "cls_" k)) uniq-nodes))
 	
-
-
 	;; handle links
 	(setq friend-res (obvz-get-friend-links (append uniq-nodes class-nodes)))
 	(setq friend-links (cdr friend-res))
@@ -203,12 +205,15 @@
 	;; (message "all links there")
 
 	;; handle nodes
+
 	(setq friend-nodes (car friend-res))
-	(setq uniq-nodes (remove-duplicates (flatten-list (list uniq-nodes friend-nodes))))
+
+	(setq uniq-nodes (delete-dups (flatten-list (append uniq-nodes friend-nodes))))
 	
+	;; (setq uniq-nodes (remove-duplicates (flatten-list (append uniq-nodes friend-nodes))))
 	;; delete cls_nodes from being there if alone
 	;; not clear if effective: what if referred to as friend? 
-	(setq uniq-nodes (cl-delete-if (lambda (k) (string-match-p "cls_" k)) uniq-nodes))
+	
 	
 	;; (message "all nodes there")
 	
@@ -323,15 +328,20 @@
 
 (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain
 
+(setq obvz-highlight-current-node nil)
+(setq obvz-connection-type "zmq")
+
 
 (setq obvz-connection-type "dbus")
-(setq obvz-connection-type "zmq")
+
 (setq obvz-dir "~/Dropbox/personal_stuff/obr-viz/")
 (setq obvz-include-node-texts t)
 (setq obvz-only-use-annotated-edges t)
 (setq obvz-most-recent-config ())
 (setq obvz-draw-arrow t)
 (setq obvz-highlight-current-node t)
+
+
 
 
 (define-key org-brain-visualize-mode-map "N" 'obvz-switch-node-text-inclusion)
