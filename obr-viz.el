@@ -2,12 +2,15 @@
 (require 'zmq)
 
 
-(defun obvis-create-children-links (parent child)
+(defun obvz-create-children-links (parent child)
     """basic hierarchical function"""
-    (if (> (length parent) 4)
-	    (when (not (equal (substring parent 0 4) "cls_"))
-		(concat parent " -- " child " -- isa"))
-	(concat parent " -- " child " -- isa"))
+
+    (concat parent " -- " child " -- isa")
+    
+    ;; (if (> (length parent) 4)
+    ;; 	    (when (not (equal (substring parent 0 4) "cls_"))
+    ;; 		(concat parent " -- " child " -- isa"))
+    ;; 	(concat parent " -- " child " -- isa"))
     )
 
 
@@ -17,24 +20,57 @@
 	  (res ())
 	  )
 	(push childrenx res)
+
+	;; prevents hierarchical links from nodes to cls_ nodes
+
+	(setq childrenx2 (copy-sequence childrenx))
 	
-	(push (mapcar (lambda (child)
-			  (funcall #'obvis-create-children-links parent child))
-		      childrenx) res)
-	;; can also push to nodes/links to function-scoped let variables
+	(cl-delete-if (lambda (k) (string-match-p "cls_" k)) childrenx2)
+
+	;; also need other way: prevent cls_nodes as parents of other nodes
+	;; if class node: push empty list to res
+	(if (obvz-is-node-cls-node parent)
+		(push () res)
+	    (push (mapcar (lambda (child)
+			      (funcall #'obvz-create-children-links parent child))
+			  childrenx2) res)
+	    )
+	
 	res
 	))
 
 
+(defun obvz-is-node-cls-node (node)
+    """checks if node is a class_node (cls_)"""
+	    
+    (let ((node-state nil))
+	(if (> (length node) 4)
+		(if (equal (substring node 0 4) "cls_")
+			(setq node-state t)
+		    )
+	    )
+	node-state
+	)
+    )
+			
+			
+	
+
 (defun children-specific-depth-let (node depth)
     "retrieves children and hierarchical links of node $node to level $depth"
-    (let ((nodes-upper-level (list node))
-	  (all-nodes (list node))
+    (let (
+	  (nodes-upper-level (list node))
+	  (all-nodes ())
+	  ;; (all-nodes (list node))
 	  (all-links ())
 	  (temp-res ())
 	  (all-res ())
 	  )
 
+	;; push node to all nodes when not class node
+	(when (not (obvz-is-node-cls-node node))
+	    (push node all-nodes))
+	
 	;; for each depth step
 	(dotimes (i depth)
 
