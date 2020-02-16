@@ -623,7 +623,13 @@ class obvz_window(QtWidgets.QWidget):
     def timer_func(self):
 
         self.qt_coords = self.base_pos_ar + self.chng_ar * self.ctr
-        
+        # debugging
+        if math.isnan(self.qt_coords[0][0]):
+            print('LUL')
+            print(self.chng_ar)
+            
+
+
         self.update()
         if self.ctr == self.step:
             
@@ -654,23 +660,22 @@ class obvz_window(QtWidgets.QWidget):
         angle = math.atan2((p2x - p1x), (p2y - p1y))
         angle_rev = math.atan2((p1x - p2x), (p1y - p2y))
             
-
-        try:
-            ar_start_pt_d = get_edge_point_delta(p1_wd, p1_ht, angle)
+        # try:
+        ar_start_pt_d = get_edge_point_delta(p1_wd, p1_ht, angle)
             
-        except:
-            print('p1x: ', p1x)
-            print('p1y: ', p1y)
-            print('p2x: ', p2x)
-            print('p2y: ', p2y)
+        # except:
+        #     print('p1x: ', p1x)
+        #     print('p1y: ', p1y)
+        #     print('p2x: ', p2x)
+        #     print('p2y: ', p2y)
 
-            print('p1_wd: ', p1_wd)
-            print('p1_ht: ', p1_ht)
-            print('p2_wd: ', p2_wd)
-            print('p2_ht: ', p2_ht)
+        #     print('p1_wd: ', p1_wd)
+        #     print('p1_ht: ', p1_ht)
+        #     print('p2_wd: ', p2_wd)
+        #     print('p2_ht: ', p2_ht)
             
-            print('angle: ', angle)
-            ar_start_pt_d = get_edge_point_delta(p1_wd, p1_ht, angle)
+        #     print('angle: ', angle)
+        #     ar_start_pt_d = get_edge_point_delta(p1_wd, p1_ht, angle)
 
             
         start_px = p1x + ar_start_pt_d[0]
@@ -711,16 +716,28 @@ class obvz_window(QtWidgets.QWidget):
         qp = QPainter(self)
         qp.setRenderHint(QPainter.Antialiasing, True)
         # edges = [(self.qt_coords[i[0]], self.qt_coords[i[1]]) for i in self.adj]
-        edges = [(self.qt_coords[i[0]], self.qt_coords[i[1]], self.dim_ar[i[0]], self.dim_ar[i[1]], (self.node_names[i[0]], self.node_names[i[1]]))
-                  for i in self.adj]
+        # try: 
+        edges = []
+        for i in self.adj:
+            edges.append((self.qt_coords[i[0]], self.qt_coords[i[1]], 
+                          self.dim_ar[i[0]], self.dim_ar[i[1]], 
+                          (self.node_names[i[0]], self.node_names[i[1]])))
+
+            qp.setPen(QPen(Qt.green, 2, Qt.SolidLine))
         
+        [self.draw_arrow(qp, e) for e in edges]
+        # except:
+            # print(qt_coords)
+
+            
+
         # print(edges)
 
-        qp.setPen(QPen(Qt.green, 2, Qt.SolidLine))
+
 
         # [qp.drawLine(e[0][0], e[0][1], e[1][0], e[1][1]) for e in edges]
         # [self.draw_arrow(qp, e[0][0], e[0][1], e[1][0], e[1][1], (node_width/2) + 0) for e in edges]
-        [self.draw_arrow(qp, e) for e in edges]
+
         # print(self.node_names[edges[-1][0]], self.node_names[edges[-1][1]])
 
         qp.setPen(QColor(168, 34, 2))
