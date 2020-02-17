@@ -50,6 +50,7 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
         
         # calculate distances based on whether to use node borders or not
         if t < dt * def_itr * rep_nd_brd_start:
+            # break
             
             # print('repellant node borders now')
             distance, both_ovlp_cnt = pythran_dist(pos, row_order, nbr_nds, nbr_pts)
@@ -57,8 +58,9 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
             
             
         else: 
-            distance = np.sqrt(np.sum(delta_nds**2, axis = -1))
             # print('nodes as points')
+            distance = np.sqrt(np.sum(delta_nds**2, axis = -1))
+            
             distance[distance == 0] = 1
             # print('distance: ', distance)
 
@@ -96,6 +98,8 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
         center_vec = center - pos_nds
 
         sum_vec = np.abs(np.sum(center_vec, axis =1))
+        # try to prevent division by 0 error
+        sum_vec[sum_vec == 0] = 1
         
         gravity_vec = (center_vec/sum_vec[:,None])*grav_multiplier
         displacement = displacement + gravity_vec
@@ -120,6 +124,10 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
 
         delta_pos_xtnd = np.hstack([delta_pos]*4).reshape((nbr_pts, 2))
         pos += delta_pos_xtnd
+        
+        # debugging test
+        # if math.isnan(pos[0][0]):
+        #     break
         
         # max iterations
         ctr +=1
