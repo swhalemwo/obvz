@@ -50,7 +50,7 @@ keyboard-driven concept mapping visualization in emacs, featuring
   - however, setting =obvz-draw-arrow= to nil creates a decent impression of an undirected graph 
 - node body text is (currently) not being automatically wrapped; it has to be manually ensured that nodes do not become too wide or long
 - the layout algorithm can be compiled manually with [[https://github.com/serge-sans-paille/pythran][pythran]] (the resulting .so file then has to be moved into the top directory)
-- there's a bug that very rarely turns the node position into NaNs, but I cannot reproduce it reliably and have therefore not been able to fix it so far. If this happens (the window then turns blank and unresponsive), obvz has to be restarted. 
+
 
 ** Future Ideas
 - multiedges, hyperedges -> rethink data model, enhance node/edge selection (e.g. documents of links)
