@@ -53,7 +53,8 @@ def pythran_ovlp(pos, row_order):
     
 #     res = pythran_ovlp(test_ar, test_order)
 #     return(res)
-    
+
+
 
 
 
@@ -99,3 +100,35 @@ def pythran_dist(pos, row_order, nbr_nds, nbr_pts):
 
     return distance, both_ovlp_cnt
 
+
+
+
+# # speed test by only focusing on min/max 
+
+# from time import time
+# from random import sample, shuffle
+
+# ar1 = np.array(sample(range(100), k = 40))
+# ar2 = np.array(sample(range(100), k = 80))
+
+# row_order1 = list(range(int((40*40)/4)))
+# shuffle(row_order1)
+
+# row_order2 = list(range(int((80*80)/4)))
+# shuffle(row_order2)
+
+# t1 = time()
+# for i in range(600):
+#     pythran_ovlp(ar1, row_order1)
+# t2 = time()
+# t2-t1
+
+
+# t3 = time()
+# for i in range(600):
+#     pythran_ovlp(ar2, row_order2)
+# t4 = time()
+# t4-t3
+
+
+# # ---------- speed test end ---------
