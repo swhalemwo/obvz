@@ -30,9 +30,10 @@ import networkx as nx
 
 from PIL import ImageFont
 
-from ovlp_func import pythran_itrtr
+# from ovlp_func import pythran_itrtr
 
-
+# from open_mp_test import pythran_itrtr_openmp
+from ovlp_func_v2 import pythran_itrtr_cbn
 
 
 app = QApplication(sys.argv)
@@ -142,6 +143,28 @@ def get_point_mat_reorder_order(point_nbr):
     row_order_final = [i for sub_list in test_orders for i in sub_list]
     return row_order_final
 
+def get_reorder_order_sliced(point_nbr):
+    """gets reorder sequence to re-arrange rows in point dist matrix
+    now focused on extremes rather than points -> reduces number of rows to 25%
+    """
+    
+    test_order = []
+    # point_nbr = 20
+
+    for i in range(point_nbr):
+            for k in range(2):
+                test_order.append(i+ (point_nbr*k))
+
+    test_order = np.array(test_order)
+
+    test_orders = []
+    for i in range(point_nbr):
+        test_orders.append((test_order + (point_nbr*2*i)).tolist())
+
+    row_order_final = [i for sub_list in test_orders for i in sub_list]
+    return row_order_final
+
+
 
 # attractive force
 def f_a(self, d,k):
@@ -155,8 +178,9 @@ def f_r(self, d,k):
 def rect_points(r):
     p1 = [r[0] + (r[2]/2), r[1] + (r[3]/2)]
     p2 = [r[0] + (r[2]/2), r[1] - (r[3]/2)]
-    p3 = [r[0] - (r[2]/2), r[1] + (r[3]/2)]
-    p4 = [r[0] - (r[2]/2), r[1] - (r[3]/2)]
+    p3 = [r[0] - (r[2]/2), r[1] - (r[3]/2)]
+    p4 = [r[0] - (r[2]/2), r[1] + (r[3]/2)]
+
 
     return np.array([p1, p2, p3, p4])
 
@@ -558,12 +582,14 @@ class obvz_window(QtWidgets.QWidget):
         # base_pos_ar = np.array([(g.nodes[i]['x'],g.nodes[i]['y']) for i in g.nodes])
         
         pos_nds = np.copy(self.base_pos_ar)
-        pos_nds = pos_nds.astype('float64')
+        # pos_nds = pos_nds.astype('float64')
+        pos_nds = pos_nds.astype('float32')
 
         A = nx.to_numpy_array(self.g)
         At = A.T
         A = A + At
         np.clip(A, 0, 1, out = A)
+        # A = A.astype('float')
         
         # get corner points pos
         
@@ -575,23 +601,34 @@ class obvz_window(QtWidgets.QWidget):
 
         pos = np.concatenate(sqs)
 
-        pos = pos.astype('float64')
+        # pos = pos.astype('float64')
+        pos = pos.astype('float32')
 
         # get row_order
-        row_order = get_point_mat_reorder_order(len(self.g.nodes))
+        # row_order = get_point_mat_reorder_order(len(self.g.nodes))
+        row_order = get_reorder_order_sliced(len(self.g.nodes))
 
         nbr_nds = A.shape[0]
         nbr_pts = pos.shape[0]
 
         self.dim_ar = np.array([[self.g.nodes[i]['width'], self.g.nodes[i]['height']] for i in self.g.nodes])
-        dim_ar2 = self.dim_ar.astype('float64')
+        # dim_ar2 = self.dim_ar.astype('float64')
+        dim_ar2 = self.dim_ar.astype('float32')
         t1 = time()
         ctr = 0
 
         grav_multiplier = 5.0
 
-        pythran_res = pythran_itrtr(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
-                                    self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
+        # pythran_res = pythran_itrtr_openmp(pos, pos_nds, A, dim_ar2, self.t, self.def_itr,
+        #                             self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
+
+        # pythran_res = pythran_itrtr(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
+        #                         self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
+
+        pythran_res = pythran_itrtr_cbn(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
+                                self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
+
+        
 
         pos_nds = pythran_res[0]
         ctr = pythran_res[2]
