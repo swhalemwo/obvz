@@ -1,16 +1,6 @@
 import numpy as np
-from pythran_funcs import pythran_dist
-
-
-# #pythran export ovlp_wrap(float[:,:], int list)
-# def ovlp_wrap(pos, row_order):
-    
-#     # x_pts = pos
-
-#     x_pts = pos[:,0].copy()
-#     # x_ovlp, dx_min = pythran_ovlp(np.copy(pos[:,0]), row_order)
-#     x_ovlp, dx_min = pythran_ovlp(x_pts, row_order)
-#     return x_ovlp
+from pythran_funcs import pythran_dist, pythran_dist_old
+from time import time
 
 
 
@@ -23,11 +13,13 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
     - dimension array dim_ar
     - initial temperature t
     - minimum definite number of iterations def_itr
-    - percentage of last section of def_itr when to start making node borders repellant
+    - percentage of last section of def_itr when to start making node borders repellent
     - ideal distance between nodes k
     - height and width of canvas
+    - gravity multiplier
     """
 
+    t_func_start = time()
 
     dt = t/def_itr
 
@@ -41,19 +33,18 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
     # grav_multiplier = 10
 
     
+    # t_loop_start = time()
+    
     while True:    
-
-        # print('pos_nds: ', pos_nds)
-        # print(t)
-
+        t_itr_start = time()
+        
         delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
         
         # calculate distances based on whether to use node borders or not
         if t < dt * def_itr * rep_nd_brd_start:
-            # break
-            
+
             # print('repellant node borders now')
-            distance, both_ovlp_cnt = pythran_dist(pos, row_order, nbr_nds, nbr_pts)
+            distance, both_ovlp_cnt = pythran_dist(pos, nbr_nds, nbr_pts)
             # print('both_ovlp: ', both_ovlp_cnt)
             
             
@@ -63,17 +54,17 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
             
             distance[distance == 0] = 1
             # print('distance: ', distance)
-
+            t_last_point_calc_itr = time()
+        
+        # t_dist_calced = time()
 
         force_ar = (k * k / distance**2) - A * distance / k
-        # print('A: ', A)
-        # print('k: ', k)
-        # print('force_ar : ', force_ar)
-        # print('delta_nds: ', delta_nds)
         displacement = (delta_nds * force_ar[:, :, None]).sum(axis=1)
 
-
-        # ------------- repellant borders, could be fictionalized
+        # t_displacement_done = time()
+        
+        # ------------- repellant borders, could be functionalized
+        # why do i not get division by 0 error here? 
 
         dispx1 = np.copy(displacement[:,0]) + (k*10)**2/(pos_nds[:,0] - dim_ar[:,0]/2)**2
         dispx2 = dispx1 - (k*10)**2/(width - (pos_nds[:,0] + dim_ar[:,0]/2))**2
@@ -83,37 +74,30 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
 
         displacement = np.concatenate([dispx2[:,None], dispy2[:,None]], axis = 1)
 
+        # t_repellent_borders_done = time()
         # -------- gravity
-        
-        # cntr = np.array([2,2])
-        
-        # cntr_vec_abs = np.abs(cntr_vec)
-        # cntr_vec_abs[cntr_vec_abs == 0] = 1
-
-        # cntr_vec/cntr_vec_abs
-        # nope that removes the angle
-        # need sum to be 1
-
 
         center_vec = center - pos_nds
 
         sum_vec = np.abs(np.sum(center_vec, axis =1))
-        # try to prevent division by 0 error
+        # prevent division by 0 error
         sum_vec[sum_vec == 0] = 1
         
         gravity_vec = (center_vec/sum_vec[:,None])*grav_multiplier
         displacement = displacement + gravity_vec
-
-        # need vector to center
-
-        # --------------- displacement change done
+        
+        # t_grav_done = time()
+        
+        # --------------- delta calcs
 
         length = np.sqrt(np.sum(displacement**2, axis = -1))
         length = np.where(length < 0.01, 0.1, length)
 
         len_ar = t/length
         delta_pos = displacement * len_ar[:,None]
-
+        
+        # t_deltas_done = time()
+        
         # ---------- update node positions
         # print('pos_nds v2: ', pos_nds)
         # print('delta_pos: ', delta_pos)
@@ -129,8 +113,30 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
         # if math.isnan(pos[0][0]):
         #     break
         
-        # max iterations
+        # max iterations limit
         ctr +=1
+        
+        # t_updates_done = time()
+        
+        # t_itr_ttl = t_updates_done - t_itr_start
+        # t_dist_calced_prd = t_dist_calced - t_itr_start
+        # t_displacement_done_prd = t_displacement_done - t_dist_calced
+        # t_repellent_borders_done_prd = t_repellent_borders_done - t_displacement_done
+        # t_grav_done_prd = t_grav_done - t_repellent_borders_done
+        # t_deltas_done_prd = t_deltas_done - t_grav_done
+        # t_updates_done_prd = t_updates_done - t_deltas_done
+        
+        
+
+        # print('-------------------------')
+        # print('t_dist_calced_prd: ', t_dist_calced_prd, round(t_dist_calced_prd/t_itr_ttl,3))
+        # print('t_displacement_done_prd: ', t_displacement_done_prd, round(t_displacement_done_prd/t_itr_ttl,3))
+        # print('t_repellent_borders_done_prd: ', t_repellent_borders_done_prd, round(t_repellent_borders_done_prd/t_itr_ttl,3))
+        # print('t_grav_done_prd: ', t_grav_done_prd, round(t_grav_done_prd/t_itr_ttl, 3))
+        # print('t_deltas_done_prd: ', t_deltas_done_prd, round(t_deltas_done_prd/t_itr_ttl, 3))
+        # print('t_updates_done_prd: ', t_updates_done_prd, round(t_updates_done_prd/t_itr_ttl, 3))
+        # print(ctr)
+        
         if ctr == max_iter:
             break
         
@@ -148,20 +154,200 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
             canvas_boundaries_crossed = 1
 
         # reduce temperature in first phase (no node borders)
-        # # reduce temp in second phase if nodes don't overlap and boundaries not 
-        
         if t > (dt * def_itr * rep_nd_brd_start):
             t -= dt
 
+        # reduce temp in second phase if nodes don't overlap and boundaries not 
         else: 
-
             if both_ovlp_cnt == nbr_nds and canvas_boundaries_crossed == 0:
                 t -= dt
 
         if t < 0:
+            t_func_end = time()
+            t_func_duration = t_func_end - t_func_start
+            t_point_period = t_last_point_calc_itr - t_func_start
+            t_border_period = t_func_end - t_last_point_calc_itr
+            print('iterations required: ', ctr)
+            print('point period part: ', t_point_period, t_point_period/t_func_duration)
+            print('border period: ', t_border_period, t_border_period/t_func_duration)
+            
             break
         
     return pos_nds, pos, ctr
+
+
+#pythran export pythran_itrtr_old(float64[:,:], float64[:,:], float[:,:], int list, float64[:,:], float, int, float, float, float, float, float)
+def pythran_itrtr_old(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_start, k, height, width, grav_multiplier):
+    """calculates new positions given 
+    - vertex/node positions (pos, pos_nds), 
+    - connectivity matrix A
+    - dimension array dim_ar
+    - initial temperature t
+    - minimum definite number of iterations def_itr
+    - percentage of last section of def_itr when to start making node borders repellent
+    - ideal distance between nodes k
+    - height and width of canvas
+    - gravity multiplier
+    """
+
+    t_func_start = time()
+
+    dt = t/def_itr
+
+    nbr_nds = pos_nds.shape[0]
+    nbr_pts = pos.shape[0]
+
+    max_iter = 500
+    ctr = 0
+
+    center = np.array((width/2, height/2))
+    # grav_multiplier = 10
+
+    
+    t_loop_start = time()
+    
+    while True:    
+        # t_itr_start = time()
+        
+        delta_nds = pos_nds[:, np.newaxis, :] - pos_nds[np.newaxis, :, :]
+        
+        # calculate distances based on whether to use node borders or not
+        if t < dt * def_itr * rep_nd_brd_start:
+
+            # print('repellant node borders now')
+            distance, both_ovlp_cnt = pythran_dist_old(pos, row_order, nbr_nds, nbr_pts)
+            # print('both_ovlp: ', both_ovlp_cnt)
+            
+            
+        else: 
+            # print('nodes as points')
+            distance = np.sqrt(np.sum(delta_nds**2, axis = -1))
+            
+            distance[distance == 0] = 1
+            # print('distance: ', distance)
+            t_last_point_calc_itr = time()
+        
+        # t_dist_calced = time()
+
+        force_ar = (k * k / distance**2) - A * distance / k
+        displacement = (delta_nds * force_ar[:, :, None]).sum(axis=1)
+
+        # t_displacement_done = time()
+        
+        # ------------- repellant borders, could be functionalized
+        # why do i not get division by 0 error here? 
+
+        dispx1 = np.copy(displacement[:,0]) + (k*10)**2/(pos_nds[:,0] - dim_ar[:,0]/2)**2
+        dispx2 = dispx1 - (k*10)**2/(width - (pos_nds[:,0] + dim_ar[:,0]/2))**2
+
+        dispy1 = np.copy(displacement[:,1]) + (k*10)**2/(pos_nds[:,1] - dim_ar[:,1]/2)**2
+        dispy2 = dispy1 - (k*10)**2/(height - (pos_nds[:,1] + dim_ar[:,1]/2))**2
+
+        displacement = np.concatenate([dispx2[:,None], dispy2[:,None]], axis = 1)
+
+        # t_repellent_borders_done = time()
+        # -------- gravity
+
+        center_vec = center - pos_nds
+
+        sum_vec = np.abs(np.sum(center_vec, axis =1))
+        # prevent division by 0 error
+        sum_vec[sum_vec == 0] = 1
+        
+        gravity_vec = (center_vec/sum_vec[:,None])*grav_multiplier
+        displacement = displacement + gravity_vec
+        
+        # t_grav_done = time()
+        
+        # --------------- delta calcs
+
+        length = np.sqrt(np.sum(displacement**2, axis = -1))
+        length = np.where(length < 0.01, 0.1, length)
+
+        len_ar = t/length
+        delta_pos = displacement * len_ar[:,None]
+        
+        # t_deltas_done = time()
+        
+        # ---------- update node positions
+        # print('pos_nds v2: ', pos_nds)
+        # print('delta_pos: ', delta_pos)
+        
+        pos_nds += delta_pos
+        
+        # print('pos_nds v3: ', pos_nds)
+
+        delta_pos_xtnd = np.hstack([delta_pos]*4).reshape((nbr_pts, 2))
+        pos += delta_pos_xtnd
+        
+        # debugging test
+        # if math.isnan(pos[0][0]):
+        #     break
+        
+        # max iterations limit
+        ctr +=1
+        
+        # t_updates_done = time()
+        
+        # t_itr_ttl = t_updates_done - t_itr_start
+        # t_dist_calced_prd = t_dist_calced - t_itr_start
+        # t_displacement_done_prd = t_displacement_done - t_dist_calced
+        # t_repellent_borders_done_prd = t_repellent_borders_done - t_displacement_done
+        # t_grav_done_prd = t_grav_done - t_repellent_borders_done
+        # t_deltas_done_prd = t_deltas_done - t_grav_done
+        # t_updates_done_prd = t_updates_done - t_deltas_done
+        
+        
+
+        # print('-------------------------')
+        # print('t_dist_calced_prd: ', t_dist_calced_prd, round(t_dist_calced_prd/t_itr_ttl,3))
+        # print('t_displacement_done_prd: ', t_displacement_done_prd, round(t_displacement_done_prd/t_itr_ttl,3))
+        # print('t_repellent_borders_done_prd: ', t_repellent_borders_done_prd, round(t_repellent_borders_done_prd/t_itr_ttl,3))
+        # print('t_grav_done_prd: ', t_grav_done_prd, round(t_grav_done_prd/t_itr_ttl, 3))
+        # print('t_deltas_done_prd: ', t_deltas_done_prd, round(t_deltas_done_prd/t_itr_ttl, 3))
+        # print('t_updates_done_prd: ', t_updates_done_prd, round(t_updates_done_prd/t_itr_ttl, 3))
+        # print(ctr)
+        
+        if ctr == max_iter:
+            break
+        
+        # see if any nodes violate boundaries
+
+        canvas_boundaries_crossed = 0
+        
+        min_x = np.min(pos[:,0])
+        max_x = np.max(pos[:,0])
+
+        min_y = np.min(pos[:,1])
+        max_y = np.max(pos[:,1])
+        
+        if min_x < 0 or min_y < 0 or max_x > width or max_y > height: 
+            canvas_boundaries_crossed = 1
+
+        # reduce temperature in first phase (no node borders)
+        if t > (dt * def_itr * rep_nd_brd_start):
+            t -= dt
+
+        # reduce temp in second phase if nodes don't overlap and boundaries not 
+        else: 
+            if both_ovlp_cnt == nbr_nds and canvas_boundaries_crossed == 0:
+                t -= dt
+
+        if t < 0:
+            
+            t_func_end = time()
+            t_func_duration = t_func_end - t_func_start
+            t_point_period = t_last_point_calc_itr - t_func_start
+            t_border_period = t_func_end - t_last_point_calc_itr
+            
+            print('iterations required: ', ctr)
+            print('point period part: ', t_point_period, t_point_period/t_func_duration)
+            print('border period: ', t_border_period, t_border_period/t_func_duration)
+            
+            break
+        
+    return pos_nds, pos, ctr
+
 
 # * scratch
 
@@ -254,3 +440,14 @@ def pythran_itrtr(pos, pos_nds, A, row_order, dim_ar, t, def_itr, rep_nd_brd_sta
 
 # scale delta_pos to corner points
 # delta_pos_xtnd = np.reshape(np.hstack([delta_pos]*4), (nbr_pts, 2))
+
+
+# #pythran export ovlp_wrap(float[:,:], int list)
+# def ovlp_wrap(pos, row_order):
+    
+#     # x_pts = pos
+
+#     x_pts = pos[:,0].copy()
+#     # x_ovlp, dx_min = pythran_ovlp(np.copy(pos[:,0]), row_order)
+#     x_ovlp, dx_min = pythran_ovlp(x_pts, row_order)
+#     return x_ovlp
