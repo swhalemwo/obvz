@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import time 
 
 import json
@@ -31,6 +33,7 @@ import networkx as nx
 from PIL import ImageFont
 
 from graphviz import Digraph
+# import graphviz
 
 
 from ovlp_func_v2 import pythran_itrtr_cbn
@@ -318,25 +321,35 @@ class obvz_window(QtWidgets.QWidget):
         # main parsing/updates has to happen here
         new_graph_dict = json.loads(new_graph_str)
     
+        update_me = 0
+        links_changed = 0
+        nodes_changed = 0
+
+
         if "draw_arrow_toggle" in new_graph_dict.keys():
             self.draw_arrow_toggle = new_graph_dict['draw_arrow_toggle']
 
-
+        # change layout type
+        
+        if list(new_graph_dict.keys())[0] == "layout_type":
+            if self.layout_type != new_graph_dict['layout_type']:
+                self.layout_type = new_graph_dict['layout_type']
+                update_me = 1
+        
+        
         # only command is to redraw
         if list(new_graph_dict.keys())[0] == 'redraw':
             self.redraw_layout(new_graph_dict['redraw'])
             
+
+
         # update current node or graph
         # links and node texts as separate things
-        else:
+        if len(list(new_graph_dict.keys())) > 1:
             self.cur_node = new_graph_dict['cur_node']
             
             if new_graph_dict['links'] == None:
                 self.reset()
-
-            update_me = 0
-            links_changed = 0
-            nodes_changed = 0
 
             if self.link_str != new_graph_dict['links'] and new_graph_dict['links'] != None:
                 links_changed = 1
@@ -366,18 +379,18 @@ class obvz_window(QtWidgets.QWidget):
                 self.node_texts_raw = new_graph_dict['node_texts']
                 update_me = 1
 
-            # start the layout calculations from here
-            if update_me == 1:
-                self.recalculate_layout()
-                self.paint_timer.start()
-            
-                
-            # no change: just make sure redrawing is done to take cur_node into account
-            # if self.link_str == new_graph_dict['links'] and new_graph_dict['node_texts'] == self.node_texts:
-            if update_me == 0:
-                logging.info('graph is same, just update current node')
-                self.update()
-                # print(new_link_str)
+        # start the layout calculations from here
+        if update_me == 1:
+            self.recalculate_layout()
+            self.paint_timer.start()
+
+
+        # no change: just make sure redrawing is done to take cur_node into account
+        # if self.link_str == new_graph_dict['links'] and new_graph_dict['node_texts'] == self.node_texts:
+        if update_me == 0:
+            logging.info('graph is same, just update current node')
+            self.update()
+
 
 
 
@@ -532,8 +545,6 @@ class obvz_window(QtWidgets.QWidget):
             self.g.add_edge(n0, n1)
 
         self.g.remove_edges_from(tpls_to_del)
-        # print('g edges after deleting: ', self.g.edges)
-        # print('nbr nodes: ', len(self.g.nodes), "    nbr edges: ", len(self.g.edges))
         
         logging.info('graph modifications done')
                 
@@ -549,8 +560,6 @@ class obvz_window(QtWidgets.QWidget):
         
         for n in nodes_to_add:
             logging.info(['set new position of ', n])
-            # print('neighbors: ', set(self.g.neighbors(n)))
-            # print('nodes to add: ', nodes_to_add)
 
 
             # node_rect = fm.boundingRect(n)
@@ -582,12 +591,14 @@ class obvz_window(QtWidgets.QWidget):
         """overall command to manage layout re-calculations"""
         if self.layout_type == 'force': 
             self.recalc_layout_force()
+            
         if self.layout_type == 'dot':
             self.recalc_layout_dot()
             
-            
+        logging.info(self.layout)
+
     def recalc_layout_force(self):
-        """calculate new change_array, set rwr_c counter"""
+        """calculate new change_array"""
         logging.info('force recalculating starting')
         
         # get node array
@@ -669,9 +680,15 @@ class obvz_window(QtWidgets.QWidget):
         self.base_pos_ar = np.array([(self.g.nodes[i]['x'],self.g.nodes[i]['y']) for i in self.g.nodes])
         dg = Digraph()
         
-        dg.graph_attr = {'rankdir': 'BT'}
+        dg.graph_attr = {'rankdir': 'BT', 'dpi': '72'}
         
         dg.edges([i for i in self.g.edges])
+        
+        for i in self.g.nodes:
+            # dg.node(i) = {'width': self.g.nodes[i]['width']/96, 'height': self.g.nodes[i]['height']/96}
+            dg.node(i, width = str(self.g.nodes[i]['width']/72), height = str(self.g.nodes[i]['height']/72))
+
+            
         dg_gv_piped = dg.pipe(format = 'json')
         dg_gv_parsed = json.loads(dg_gv_piped)
 
@@ -693,11 +710,10 @@ class obvz_window(QtWidgets.QWidget):
     def timer_func(self):
 
         self.qt_coords = self.base_pos_ar + self.chng_ar * self.ctr
-        # debugging
-        if math.isnan(self.qt_coords[0][0]):
-            print('LUL')
-            print(self.chng_ar)
-            
+        # # debugging
+        # if math.isnan(self.qt_coords[0][0]):
+        #     print('LUL')
+        #     print(self.chng_ar)
 
 
         self.update()
