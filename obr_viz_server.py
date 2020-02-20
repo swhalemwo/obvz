@@ -448,8 +448,11 @@ class obvz_window(QtWidgets.QWidget):
         # "del": in old, not in new
 
         # new_links = new_link_str.split(";")
-        new_tpls = [(i.split(" -- ")[0], i.split(" -- ")[1]) for i in new_links]
-        
+        if new_links is not None:
+            new_tpls = [(i.split(" -- ")[0], i.split(" -- ")[1]) for i in new_links]
+        else:
+            new_tpls = set()
+
         tpls_to_add = list(set(new_tpls) - set(self.tpls))
         tpls_to_del = list(set(self.tpls) - set(new_tpls))
         
