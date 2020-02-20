@@ -30,9 +30,9 @@ import networkx as nx
 
 from PIL import ImageFont
 
-# from ovlp_func import pythran_itrtr
+from graphviz import Digraph
 
-# from open_mp_test import pythran_itrtr_openmp
+
 from ovlp_func_v2 import pythran_itrtr_cbn
 
 
@@ -191,7 +191,7 @@ def rect_points(r):
 
 
 class obvz_window(QtWidgets.QWidget):
-    def __init__(self, con_type):
+    def __init__(self, con_type, layout_type):
         super().__init__()
 
         self.top= 0
@@ -226,6 +226,10 @@ class obvz_window(QtWidgets.QWidget):
         self.k = 30.0 # desired distance? 
         self.step = 6.0 # how many steps realignment takes
         self.update_interval = 40
+        
+        # needs to be as command line parameter? think so, how else would it know how to start
+        # also needs function to change it
+        self.layout_type = layout_type
         
         # graph information
         self.adj = [] # adjacency list
@@ -274,7 +278,7 @@ class obvz_window(QtWidgets.QWidget):
 
     
     def redraw_layout(self, cmd):
-        # assign new random positions
+        """assign new rando positions"""
         if cmd == "hard":
             for n in self.g.nodes():
                 
@@ -331,7 +335,6 @@ class obvz_window(QtWidgets.QWidget):
                 self.reset()
 
             update_me = 0
-            
             links_changed = 0
             nodes_changed = 0
 
@@ -342,7 +345,6 @@ class obvz_window(QtWidgets.QWidget):
             if self.node_str != new_graph_dict['nodes'] and new_graph_dict['nodes'] !=  None:
                 logging.info(['self.node_str: ', self.node_str])
                 logging.info(["new_graph_dict['nodes']: ", new_graph_dict['nodes']])
-                
                 logging.info('nodes have changed')
                 nodes_changed = 1
                 
@@ -434,6 +436,9 @@ class obvz_window(QtWidgets.QWidget):
 
             self.g.nodes[n]['width'] = max(nt_dims[0]) + self.wd_pad*2
             self.g.nodes[n]['height'] = sum(nt_dims[1])
+            
+        self.dim_ar = np.array([[self.g.nodes[i]['width'], self.g.nodes[i]['height']] for i in self.g.nodes])
+
 
 
 
@@ -572,13 +577,18 @@ class obvz_window(QtWidgets.QWidget):
         # print(self.width, self.height)
 
         self.t = self.init_t
-        # self.recalculate_layout()
-        # print('to here2')
-        # print(self.g.nodes)
 
     def recalculate_layout(self):
+        """overall command to manage layout re-calculations"""
+        if self.layout_type == 'force': 
+            self.recalc_layout_force()
+        if self.layout_type == 'dot':
+            self.recalc_layout_dot()
+            
+            
+    def recalc_layout_force(self):
         """calculate new change_array, set rwr_c counter"""
-        logging.info('recalculating starting')
+        logging.info('force recalculating starting')
         
         # get node array
         self.base_pos_ar = np.array([(self.g.nodes[i]['x'],self.g.nodes[i]['y']) for i in self.g.nodes])
@@ -604,29 +614,21 @@ class obvz_window(QtWidgets.QWidget):
 
         pos = np.concatenate(sqs)
 
-        # pos = pos.astype('float64')
+
         pos = pos.astype('float32')
 
-        # get row_order
-        # row_order = get_point_mat_reorder_order(len(self.g.nodes))
         row_order = get_reorder_order_sliced(len(self.g.nodes))
 
         nbr_nds = A.shape[0]
         nbr_pts = pos.shape[0]
 
-        self.dim_ar = np.array([[self.g.nodes[i]['width'], self.g.nodes[i]['height']] for i in self.g.nodes])
-        # dim_ar2 = self.dim_ar.astype('float64')
+        # self.dim_ar = np.array([[self.g.nodes[i]['width'], self.g.nodes[i]['height']] for i in self.g.nodes])
         dim_ar2 = self.dim_ar.astype('float32')
         t1 = time()
         ctr = 0
 
         grav_multiplier = 5.0
 
-        # pythran_res = pythran_itrtr_openmp(pos, pos_nds, A, dim_ar2, self.t, self.def_itr,
-        #                             self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
-
-        # pythran_res = pythran_itrtr(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
-        #                         self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
 
         pythran_res = pythran_itrtr_cbn(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
                                 self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
@@ -651,14 +653,42 @@ class obvz_window(QtWidgets.QWidget):
             self.g.nodes[i[0]]['x'] = i[1][0]
             self.g.nodes[i[0]]['y'] = i[1][1]
 
-
-        # self.rwr_c = self.step
         # print("base_pos_ar: ", self.base_pos_ar)
-        # print("goal_ar: ", pos)
-        # print("chng_ar: ", self.chng_ar)
-        logging.info('recalculating done')
+        logging.info('force recalculating done')
 
 
+    def recalc_layout_dot(self):
+        """recalculate node positions with dot layout"""
+        logging.info('dot recalculating starting')
+        t1 = time()
+        # think i have to set it here as well, is defined in force calcs
+        # maybe move to get_node_text_dimensions? 
+        # self.dim_ar = np.array([[self.g.nodes[i]['width'], self.g.nodes[i]['height']] for i in self.g.nodes])
+
+        # get node array
+        self.base_pos_ar = np.array([(self.g.nodes[i]['x'],self.g.nodes[i]['y']) for i in self.g.nodes])
+        dg = Digraph()
+        
+        dg.graph_attr = {'rankdir': 'BT'}
+        
+        dg.edges([i for i in self.g.edges])
+        dg_gv_piped = dg.pipe(format = 'json')
+        dg_gv_parsed = json.loads(dg_gv_piped)
+
+
+        for i in dg_gv_parsed['objects']:
+            posx, posy = i['pos'].split(',')
+            self.g.nodes[i['name']]['x'] = float(posx) + 20
+            self.g.nodes[i['name']]['y'] = float(posy)
+
+        pos_nds = np.array([(self.g.nodes[i]['x'],self.g.nodes[i]['y']) for i in self.g.nodes])
+
+        self.chng_ar = (pos_nds - self.base_pos_ar)/self.step
+        
+        t2 = time()
+        
+        logging.info('dot recalc done in ' + str(round(t2-t1)) + ' seconds')
+        
 
     def timer_func(self):
 
@@ -834,8 +864,11 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('-v', default=False, action='store_true')
     parser.add_argument('con_type')
+    parser.add_argument('layout_type')
+    
     args = parser.parse_args()
     con_type = args.con_type
+    layout_type = args.layout_type
     
     if con_type == 'zmq':
         import zmq
@@ -902,8 +935,6 @@ if __name__ == "__main__":
             def echo(self, phrase):
                 self.message_base.emit(phrase)
                 # print("phrase: " + phrase + " received in Adaptor object")
-
-
         # ---------- dbus connection end -------
 
 
@@ -913,7 +944,7 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(logging.WARNING)
 
 
-    mw = obvz_window(con_type)
+    mw = obvz_window(con_type, layout_type)
     sys.exit(app.exec_())
     
 
