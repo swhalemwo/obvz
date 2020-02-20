@@ -1,5 +1,5 @@
 (require 'cl)
-(require 'zmq)
+
 
 
 (defun obvz-create-children-links (parent child)
@@ -233,7 +233,6 @@
 		(setq current-node (org-brain-entry-at-pt))
 	    (setq current-node nil))
 	    
-		
 
 	(setq graph-dict
 	      `(("links" . ,all-links)
@@ -241,13 +240,12 @@
 		("cur_node" . ,current-node)
 		("node_texts" . ,node-text-alist)
 		("draw_arrow_toggle" . ,obvz-draw-arrow)
+		("layout_type" . ,obvz-layout-type)
 		)
 	      )
 	graph-dict
 	)
     )
-
-
 
 ;; data structure: dict with key node, value text
 ;; is itself dict in graph_dict
@@ -264,22 +262,21 @@
 
 
 
-;; (define-key org-brain-visualize-mode-map "G" 'obr-viz)
-
 
 (defun obvz-reposition-nodes()
     "redraw layout, either soft (apply forces to current layout) or hard (from random starting positions)"
     (interactive)
-    (let ((called-prefix current-prefix-arg))
+    (let ((called-prefix current-prefix-arg)
+	  (obvz-redraw-alist ())
+	  )
 	(if (equal called-prefix nil)
-		    (setq obvz-redraw-alist '(("redraw" . "soft")))
-		(setq obvz-redraw-alist '(("redraw" . "hard")))
-		)
+		(setq obvz-redraw-alist '(("redraw" . "soft")))
+	    (setq obvz-redraw-alist '(("redraw" . "hard")))
+	    )
 	;; (zmq-send sock (json-encode-alist obvz-redraw-alist))
 	(obvz-send-to-python (json-encode-alist obvz-redraw-alist))
 	)
     )
-
 
 
 (defun obvz-update-graph ()
@@ -295,13 +292,27 @@
     )
     )
 
+(defun obvz-update-graph-hard ()
+    (interactive)
+    (setq obvz-current-config (obvz-create-graph-dict obvz-include-node-texts))
+    (setq obvz-most-recent-config obvz-current-config)
+    (obvz-send-to-python (json-encode-alist obvz-current-config))
+    )
 
 (defun obvz-start ()
     (interactive)
-    (shell-command (concat "cd "obvz-dir " && python3 obr_viz_server.py " obvz-connection-type " & "))
+    (shell-command
+     ;; (mapconcat 'identity ("cd" obvz-dir " && python3 obr_viz_server.py " obvz-connection-type obvz-layout-type " & "))
+     (mapconcat 'identity `("cd" ,obvz-dir "&& python3.7 obr_viz_server.py" ,obvz-connection-type ,obvz-layout-type "&") " ")
+     )
     (setq obvz-most-recent-config ())
     )
 
+(defun obvz-set-layout-type ()
+    (interactive)
+    (setq obvz-layout-type (completing-read "Set layout type: " '("dot" "force")))
+    (obvz-send-to-python (json-encode `(("layout_type" . ,obvz-layout-type))))
+    )
 
 
 ;; connection functions
@@ -323,13 +334,12 @@
     "com.qtpad.dbus"               ; interface name
     method args))
 	
-	
 	    
 
 (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain
 
 (setq obvz-highlight-current-node nil)
-(setq obvz-connection-type "zmq")
+
 
 
 (setq obvz-connection-type "dbus")
@@ -340,43 +350,20 @@
 (setq obvz-most-recent-config ())
 (setq obvz-draw-arrow t)
 (setq obvz-highlight-current-node t)
+(setq obvz-layout-type "force")
 
 
 
 
 (define-key org-brain-visualize-mode-map "N" 'obvz-switch-node-text-inclusion)
 (define-key org-brain-visualize-mode-map "R" 'obvz-reposition-nodes)
-(define-key org-brain-visualize-mode-map "U" 'obvz-update-graph)
+(define-key org-brain-visualize-mode-map "U" 'obvz-update-graph-hard)
 
 
-(setq sock (zmq-socket (zmq-context) zmq-PUB))
-(zmq-bind sock "tcp://127.0.0.1:5556")
+;; ============== zmq section ================
 
-(zmq-send sock "LOL")
-
+;; (require 'zmq)
+;; (setq sock (zmq-socket (zmq-context) zmq-PUB))
+;; (zmq-bind sock "tcp://127.0.0.1:5556")
+;; (setq obvz-connection-type "zmq")
     
-;; * dbus tests
-
-
-
-(setq ECHO_BUS_NAME "com.qtpad.dbus")
-(setq ECHO_OBJECT_PATH "/cli")
-(setq ECHO_INTERFACE "com.qtpad.dbus")
-
-
-
-(require 'dbus)
-(defun djcb-call-tomboy (method &rest args)
-  "call the tomboy method METHOD with ARGS over dbus"
-  (apply 'dbus-call-method 
-    :session                            ; use the session (not system) bus
-    ECHO_BUS_NAME       ;; "org.gnome.Tomboy"      ; service name
-    ECHO_OBJECT_PATH       ;; "/org/gnome/Tomboy/RemoteControl"   ; path name
-    ECHO_INTERFACE ;; "org.gnome.Tomboy.RemoteControl"    ; interface name
-    method args))
-
-(djcb-call-tomboy "echo" "jjj")
-
-(djcb-call-tomboy "echo" (json-encode-alist obvz-current-config))
-
-
