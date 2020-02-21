@@ -5,8 +5,8 @@ import time
 import json
 
 from PyQt5.QtWidgets import QPushButton, QApplication, QWidget
-from PyQt5.QtCore import QTimer, Qt, QObject, pyqtSlot
-from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5.QtCore import QTimer, Qt, QObject, pyqtSlot, QSize
+from PyQt5 import QtCore, QtWidgets, QtGui, QtSvg
 
 
 from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont, QFontMetrics
@@ -340,7 +340,9 @@ class obvz_window(QtWidgets.QWidget):
         # only command is to redraw
         if list(new_graph_dict.keys())[0] == 'redraw':
             self.redraw_layout(new_graph_dict['redraw'])
-            
+
+        if list(new_graph_dict.keys())[0] == 'export':
+            self.export_graph(new_graph_dict['export']['export_type'], new_graph_dict['export']['export_file'])
 
 
         # update current node or graph
@@ -595,7 +597,7 @@ class obvz_window(QtWidgets.QWidget):
         if self.layout_type == 'dot':
             self.recalc_layout_dot()
             
-        logging.info(self.layout)
+        logging.info(['layout: ', self.layout_type])
 
     def recalc_layout_force(self):
         """calculate new change_array"""
@@ -705,7 +707,68 @@ class obvz_window(QtWidgets.QWidget):
         t2 = time()
         
         logging.info('dot recalc done in ' + str(round(t2-t1)) + ' seconds')
+
+    def dot_node_text(self, node_title, node_text_lines):
+        """generate the label for dot export"""
+
+        table_header = """<<table color='black' border = "0" cellborder ="0" cellspacing="-6" align = "right">"""
+        table_node_title = """<tr><td align="left"><FONT POINT-SIZE="22">""" + node_title + "</FONT></td></tr>"
+
+        table_lines = ["""<tr><td align="left">""" + i + "</td></tr>" for i in node_text_lines]
+        table_end = "</table>>"
+
+        node_text_string = table_header + table_node_title + "".join(table_lines) + table_end
+        return node_text_string
+
+
+    def export_graph(self, export_type, export_file):
+        """export graph to different formats"""
+        # if export_type == 'graphml':
+        #     nx.write_graphml(self.g, export_file)
+            
+        if export_type == 'dot':
+            dg = Digraph()
+            dg.edges([i for i in self.g.edges])
         
+            for i in self.g.nodes:
+                node_text_lines_raw = self.node_texts_raw[i]
+                node_text_lines =  [i for i in node_text_lines_raw.split('\n') if len(i) > 0]
+                node_label = self.dot_node_text(i, node_text_lines)
+                dg.node(i, label = node_label)
+            dg.save(export_file)
+            
+            
+        # export_file = 'test.svg'
+        
+        if export_type == 'svg':
+            logging.info('export as svg')
+            logging.info(['file', export_file])
+            logging.info(['width: ', self.width])
+            logging.info(['height: ', self.height])
+
+            svg = QtSvg.QSvgGenerator()
+            svg.setFileName(export_file)
+            svg.setSize(QSize(int(self.width*0.8), int(self.height*0.8))) 
+            # svg.setSize(QSize(self.width, self.height))
+            
+            # svg.PdmDpiX = 8
+            # svg.PdmDpiY = 8
+            
+            # svg.setSize(QSize(600,700))
+            # svg.setViewBox(QRect(0, 0, self.width, self.height))
+
+            qp_svg = QPainter(svg)
+            qp_svg.setRenderHint(QPainter.Antialiasing, True) 
+            
+            self.draw_edges(qp_svg)
+            # have to add arbitrary scale factor
+            self.draw_texts(qp_svg, 1.333)
+            self.draw_rects(qp_svg)
+            # rather split up paintEvent into more funtions
+            
+            qp_svg.end()
+            
+
 
     def timer_func(self):
 
@@ -728,8 +791,6 @@ class obvz_window(QtWidgets.QWidget):
 
     
     
-
-    # def draw_arrow(self, qp, p1x, p1y, p2x, p2y, node_width):
     def draw_arrow(self, qp, e):
         """draw arrow from p1 to rad units before p2"""
         # get arrow angle, counterclockwise from center -> east line
@@ -794,52 +855,33 @@ class obvz_window(QtWidgets.QWidget):
             qp.drawLine(ar1_x, ar1_y, arw_goal_x, arw_goal_y)
             qp.drawLine(ar2_x, ar2_y, arw_goal_x, arw_goal_y)
 
-
-    def paintEvent(self, event):
+    def draw_edges(self, qp):
+        """draw the edges"""
         
-        t1 = time()
-        node_width = 0
-        qp = QPainter(self)
-        qp.setRenderHint(QPainter.Antialiasing, True)
-        # edges = [(self.qt_coords[i[0]], self.qt_coords[i[1]]) for i in self.adj]
-        # try: 
         edges = []
         for i in self.adj:
             edges.append((self.qt_coords[i[0]], self.qt_coords[i[1]], 
                           self.dim_ar[i[0]], self.dim_ar[i[1]], 
                           (self.node_names[i[0]], self.node_names[i[1]])))
 
-            qp.setPen(QPen(Qt.green, 2, Qt.SolidLine))
-        
+        qp.setPen(QPen(Qt.green, 2, Qt.SolidLine))
         [self.draw_arrow(qp, e) for e in edges]
-        # except:
-            # print(qt_coords)
-
-            
-
-        # print(edges)
 
 
-
-        # [qp.drawLine(e[0][0], e[0][1], e[1][0], e[1][1]) for e in edges]
-        # [self.draw_arrow(qp, e[0][0], e[0][1], e[1][0], e[1][1], (node_width/2) + 0) for e in edges]
-
-        # print(self.node_names[edges[-1][0]], self.node_names[edges[-1][1]])
-
+    def draw_texts(self, qp, scl):
+        """draw the node texts, add scale factor scl (around 1.333) for svg export """
         qp.setPen(QColor(168, 34, 2))
 
-        # draw node titles
-        qp.setFont(QFont('Arial', self.font_size))
+        # draw node titles and text
+
         for t in zip(self.qt_coords, self.dim_ar, self.node_names): 
-            # qp.drawText(t[0][0]-t[1][0]/2+ self.wd_pad, t[0][1] + 5 , t[2])
-            
+            qp.setFont(QFont('Arial', self.font_size * scl))
             xpos = t[0][0]-t[1][0]/2+ self.wd_pad
-            # ypos = (t[0][1]-t[1][1]/2) + self.font_size
             ypos = (t[0][1]-t[1][1]/2) + self.title_vflush/1.3333
-            # ypos = (t[0][1]-t[1][1]/2)
+
             qp.drawText(xpos, ypos, t[2])
             
-            qp.setFont(QFont('Arial', self.node_text_size))
+            qp.setFont(QFont('Arial', self.node_text_size * scl))
             
             node_text_lines_raw = self.node_texts_raw[t[2]]
             node_text_lines =  [i for i in node_text_lines_raw.split('\n') if len(i) > 0]
@@ -848,15 +890,11 @@ class obvz_window(QtWidgets.QWidget):
                 qp.drawText(xpos, ypos + self.node_text_vflush*c, t2)
                 c+=1
             
-            qp.setFont(QFont('Arial', self.font_size))
-        
-        
-        qp.setPen(QPen(Qt.black, 3, Qt.SolidLine))
-        # qp.setBrush(QBrush(Qt.green, Qt.SolidPattern))
-        
-        # print('painting nodes')
-        # print(self.size())
 
+        
+        
+    def draw_rects(self, qp):
+        """draw the rectangles of nodes"""
         qp.setPen(QPen(Qt.black, 2, Qt.SolidLine))
 
         for i in zip(self.qt_coords, self.dim_ar, self.node_names):
@@ -869,7 +907,22 @@ class obvz_window(QtWidgets.QWidget):
 
         self.width = self.size().width()
         self.height = self.size().height()
-        # print(self.width, self.height)
+
+
+    def paintEvent(self, event):
+        """actual paint event, now heavily functionalized"""
+        t1 = time()
+
+        qp = QPainter(self)
+        qp.setRenderHint(QPainter.Antialiasing, True)
+
+        self.draw_edges(qp)
+
+
+        self.draw_texts(qp, 1.0)
+
+        self.draw_rects(qp)
+
         t2 = time()
         
         logging.info('painting took ' + str(round(t2-t1,4)) + ' seconds')
@@ -959,6 +1012,9 @@ if __name__ == "__main__":
     else:
         logging.getLogger().setLevel(logging.WARNING)
 
+
+    # con_type = 'dbus'
+    # layout_type = 'force'
 
     mw = obvz_window(con_type, layout_type)
     sys.exit(app.exec_())
