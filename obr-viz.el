@@ -301,12 +301,32 @@
 
 (defun obvz-start ()
     (interactive)
-    (shell-command
-     ;; (mapconcat 'identity ("cd" obvz-dir " && python3 obr_viz_server.py " obvz-connection-type obvz-layout-type " & "))
-     (mapconcat 'identity `("cd" ,obvz-dir "&& python3.7 obr_viz_server.py" ,obvz-connection-type ,obvz-layout-type "&") " ")
-     )
-    (setq obvz-most-recent-config ())
-    )
+    (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph)
+    (shell-command (mapconcat 'identity `("cd" ,obvz-dir "&& python3.7 obr_viz_server.py" ,obvz-connection-type ,obvz-layout-type "&") " "))
+     
+    (setq obvz-most-recent-config ()))
+    
+
+(defun obvz-stop ()
+    (interactive)
+    (remove-hook 'org-brain-after-visualize-hook 'obvz-update-graph))
+    
+    
+
+(defun obvz-export ()
+    (interactive)
+    (let ((obvz-export-format (completing-read "Set export format: " '("dot" "svg")))
+	  (obvz-export-file (expand-file-name (read-file-name "Export file: ")))
+	  (export-dict ()))
+	  
+	(setq export-dict `(("export_type" . ,obvz-export-format)
+			    ("export_file" . ,obvz-export-file)))
+
+	(obvz-send-to-python (json-encode `(("export" . ,export-dict))))))
+	  
+	  
+	
+	
 
 (defun obvz-set-layout-type ()
     (interactive)
@@ -336,7 +356,7 @@
 	
 	    
 
-(add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain
+;; (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain
 
 (setq obvz-highlight-current-node nil)
 
