@@ -4,54 +4,72 @@
 
 (defun obvz-create-children-links (parent child)
     """basic hierarchical function"""
-
-    (concat parent " -- " child " -- isa")
-    
-    ;; (if (> (length parent) 4)
-    ;; 	    (when (not (equal (substring parent 0 4) "cls_"))
-    ;; 		(concat parent " -- " child " -- isa"))
-    ;; 	(concat parent " -- " child " -- isa"))
-    )
+    (concat (obvz-get-node-name parent) " -- " (obvz-get-node-name child) " -- isa"))
 
 
-(defun loop-over-upper-level-nodes (parent)
-    """get nodes and hierarchical links of parent node"""
+
+(defun obvz-is-node-headline (node)
+    "check whether node is headline entry"
+    (let ((node-state nil))
+	(if (equal (type-of node) 'cons)
+		(setq node-state t)
+	    (setq node-state nil))
+	node-state))
+	
+	
+
+(defun obvz-get-node-name (node)
+    "get actual name of node (not identical when headline entry)"
+    (let ((node-name ""))
+	(if (obvz-is-node-headline node)
+		(setq node-name (nth 1 node))
+	    (setq node-name node))
+	node-name))
+	    
+
+
+(defun obvz-loop-over-upper-level-nodes (parent)
+    """get nodes and hierarchical links of parent node, now also for headline entries"""
     (let ((childrenx (org-brain-children parent))
-	  (res ())
-	  )
+	  (node-names)
+	  (res ()))
+	  
 	(push childrenx res)
 
-	;; prevents hierarchical links from nodes to cls_ nodes
-
-	(setq childrenx2 (copy-sequence childrenx))
+	;; (setq childrenx2 (mapcar 'obvz-get-node-name childrenx))
 	
-	(cl-delete-if (lambda (k) (string-match-p "cls_" k)) childrenx2)
+	(cl-delete-if (lambda (k) (obvz-is-node-cls-node k)) childrenx)
 
+
+	;; prevents hierarchical links from nodes to cls_ nodes
 	;; also need other way: prevent cls_nodes as parents of other nodes
 	;; if class node: push empty list to res
 	(if (obvz-is-node-cls-node parent)
 		(push () res)
-	    (push (mapcar (lambda (child)
-			      (funcall #'obvz-create-children-links parent child))
-			  childrenx2) res)
-	    )
+	    (push (mapcar (lambda (child) (funcall #'obvz-create-children-links parent child)) childrenx) res))
+
+	res))
+
+
+
+	    
 	
-	res
-	))
-
-
 (defun obvz-is-node-cls-node (node)
-    """checks if node is a class_node (cls_)"""
+    "check if node is a class node (now can check both file and headline entries"
+    (if (obvz-is-node-headline node)
+	    (obvz-is-nodename-cls-node (nth 1 node))
+	(obvz-is-nodename-cls-node node)))
+    
+
+(defun obvz-is-nodename-cls-node (node)
+    """checks if the name of a node is a class (cls_)"""
 	    
     (let ((node-state nil))
 	(if (> (length node) 4)
 		(if (equal (substring node 0 4) "cls_")
-			(setq node-state t)
-		    )
-	    )
-	node-state
-	)
-    )
+			(setq node-state t)))
+	node-state))
+
 			
 			
 	
@@ -79,7 +97,6 @@
 	    ;; but idk how to work without temp-res
 	    (push (mapcar 'loop-over-upper-level-nodes nodes-upper-level) temp-res)
 
-
 	    ;; push nodes/links to local vars
 	    (mapc (lambda (nodex) (push nodex all-nodes)) (flatten-list (mapcar 'cdr (car temp-res))))
 	    (mapc (lambda (linkx) (push linkx all-links)) (flatten-list (mapcar 'car (car temp-res))))
@@ -97,6 +114,48 @@
     )
 
 
+
+(defun obvz-children-specific-depth (node depth)
+    "retrieves children and hierarchical links of node $node to level $depth"
+    (let (
+	  (nodes-upper-level (list node))
+	  (all-nodes ())
+	  ;; (all-nodes (list node))
+	  (all-links ())
+	  (temp-res ())
+	  (all-res ()))
+
+
+	;; push node to all nodes when not class node
+	(when (not (obvz-is-node-cls-node node))
+	    (push node all-nodes))
+	
+	;; for each depth step
+	(dotimes (i depth)
+
+
+	    (setq temp-res (mapcar 'obvz-loop-over-upper-level-nodes nodes-upper-level))
+	    (setq temp-nodes (mapcar 'cdr temp-res))
+	    (setq temp-nodes2 (mapcar 'car temp-nodes))
+
+	    ;; need to deal with lists of lists, but can't aggressively flatten
+	    (mapcar (lambda (i) (mapcar (lambda (k) (push k all-nodes)) i)) temp-nodes2)
+	    ;; deal with links
+	    (mapc (lambda (linkx) (push linkx all-links)) (flatten-list (mapcar 'car  temp-res)))
+	    
+	    ;; (setq nodes-upper-level (flatten-list (mapcar 'cdr (car temp-res))))
+	    (setq nodes-upper-level ())
+	    (mapcar (lambda (i) (mapcar (lambda (k) (push k nodes-upper-level)) i)) temp-nodes2)
+	    (setq nodes-upper-level2 nodes-upper-level)
+	    
+	    )
+	
+	(push all-links all-res)
+	(push all-nodes all-res)
+
+	all-res))
+
+
 (defun obvz-get-friend-links (nodes)
     """get links between nodes"""
     (let ((friend-links ())
@@ -110,43 +169,33 @@
 
 	(while nodes
 	    (setq node (car nodes))
+	    ;; (print node)
 	    (setq friends (org-brain-friends node))
 	    (while friends
 		(setq friend (car friends))
 		
 		(setq edge-annot (org-brain-get-edge-annotation node friend))
+		;; check edge annotation requirement
 		(if (equal obvz-only-use-annotated-edges t)
 			(progn 
 			    (if (not (equal edge-annot nil))
 				    (progn
-					(push (concat node " -- " friend " -- " edge-annot) friend-links)
-					(push friend friend-nodes)
-					)
-				)
-			    )
+					(push (concat (obvz-get-node-name node) " -- " (obvz-get-node-name friend) " -- " edge-annot) friend-links)
+					(push friend friend-nodes))))
+		    ;; if requirement nil: use friend regardless of annotation
 		    (progn
-			(push (concat node " -- " friend " -- " edge-annot) friend-links)
-			(push friend friend-nodes)
-			)
-		    )
-		    
+			(push (concat (obvz-get-node-name node) " -- " (obvz-get-node-name friend) " -- " edge-annot) friend-links)
+			(push friend friend-nodes)))
 
-		(setq friends (cdr friends))
+		(setq friends (cdr friends)))
 
-		)
-	    (setq nodes (cdr nodes))
-	    )
-
-
+	    (setq nodes (cdr nodes)))
 	(push friend-links res)
 	(push friend-nodes res)
 	;; friend-links
-	res
-	)
-    )
+	res))
 
 	
-
 
 (defun obvz-create-graph-dict (obvz-include-node-texts)
     """generate graph dict from pins"""
@@ -172,15 +221,16 @@
 	  (current-node ())
 	  )
 	;; get hierarchical relations
-
-	
 	(while rel-nodes
 	    
 	    (setq rel-node (car rel-nodes))
 	    ;; (print rel-node)
 
-	    (setq node-res (children-specific-depth-let rel-node 8))
-	    (push (car node-res) total-nodes)
+	    (setq node-res (obvz-children-specific-depth rel-node 8))
+	    
+	    ;; (push (car node-res) total-nodes)
+	    (mapc (lambda (i) (push i total-nodes)) (car node-res))
+	    
 	    (push (cdr node-res) total-links)
 
 	    (setq rel-nodes (cdr rel-nodes))
@@ -188,27 +238,29 @@
 	    )
 
 	;; (print total-nodes)
-	(setq uniq-nodes (remove-duplicates (flatten-list total-nodes)))
+	;; (setq uniq-nodes (remove-duplicates (flatten-list total-nodes)))
+	(setq uniq-nodes (delete-dups total-nodes))
 
-	(cl-delete-if (lambda (k) (string-match-p "cls_" k)) uniq-nodes)
-
+	;; (cl-delete-if (lambda (k) (string-match-p "cls_" k)) uniq-nodes)
+	(cl-delete-if (lambda (k) (obvz-is-node-cls-node k)) uniq-nodes)
 
 	;; (print uniq-nodes)
 	;; (setq uniq-nodes (cl-delete-if (lambda (k) (string-match-p "cls_" k)) uniq-nodes))
 	
-	;; handle links
-	(setq friend-res (obvz-get-friend-links (append uniq-nodes class-nodes)))
+	;; handle friend links
+	(setq friend-res (obvz-get-friend-links uniq-nodes))
 	(setq friend-links (cdr friend-res))
 	(push friend-links total-links)
 	(setq all-links (flatten-list total-links))
 	(setq link-string (mapconcat 'identity all-links ";"))
-	;; (message "all links there")
 
-	;; handle nodes
 
+	;; handle friend nodes
 	(setq friend-nodes (car friend-res))
-
-	(setq uniq-nodes (delete-dups (flatten-list (append uniq-nodes friend-nodes))))
+	(mapc (lambda (i) (push i uniq-nodes)) friend-nodes)
+	
+	;; (setq uniq-nodes (delete-dups (flatten-list (append uniq-nodes friend-nodes))))
+	(delete-dups uniq-nodes)
 	
 	;; (setq uniq-nodes (remove-duplicates (flatten-list (append uniq-nodes friend-nodes))))
 	;; delete cls_nodes from being there if alone
@@ -222,21 +274,21 @@
 	(if (equal obvz-include-node-texts t)
 		(progn
 		    (setq node-texts (mapcar 'org-brain-text uniq-nodes))
-		    (setq node-text-alist (mapcar* #'cons uniq-nodes node-texts))
+		    (setq node-text-alist (mapcar* #'cons (mapcar 'obvz-get-node-name uniq-nodes) node-texts))
 		    )
-	    (setq node-text-alist (mapcar* #'cons uniq-nodes (make-list (len uniq-nodes) "")))
+	    (setq node-text-alist (mapcar* #'cons (mapcar 'obvz-get-node-name uniq-nodes) (make-list (len uniq-nodes) "")))
 	    )
 	;; (message "node texts there")
 
 	;; get current node
 	(if (equal obvz-highlight-current-node t)
-		(setq current-node (org-brain-entry-at-pt))
+		(setq current-node (obvz-get-node-name (org-brain-entry-at-pt)))
 	    (setq current-node nil))
 	    
 
 	(setq graph-dict
 	      `(("links" . ,all-links)
-		("nodes" . ,uniq-nodes)
+		("nodes" . ,(mapcar 'obvz-get-node-name uniq-nodes))
 		("cur_node" . ,current-node)
 		("node_texts" . ,node-text-alist)
 		("draw_arrow_toggle" . ,obvz-draw-arrow)
@@ -252,6 +304,7 @@
 
 
 (defun obvz-switch-node-text-inclusion()
+    "toggle node text inclusion on or off"
     (interactive)
     (if (equal obvz-include-node-texts t)
 	    (setq obvz-include-node-texts nil)
@@ -280,8 +333,8 @@
 
 
 (defun obvz-update-graph ()
+    "update graph; intended for changed node text and after restarting"
     (interactive)
-
     (setq obvz-current-config (obvz-create-graph-dict obvz-include-node-texts))
     (if (not (equal obvz-current-config obvz-most-recent-config))
 	    (progn
@@ -293,6 +346,7 @@
     )
 
 (defun obvz-update-graph-hard ()
+    "update graph in any case (maybe necessary); intended for changed node text and after restarting"
     (interactive)
     (setq obvz-current-config (obvz-create-graph-dict obvz-include-node-texts))
     (setq obvz-most-recent-config obvz-current-config)
@@ -314,6 +368,7 @@
     
 
 (defun obvz-export ()
+    """exports the currently visualized graph to dot or svg."""
     (interactive)
     (let ((obvz-export-format (completing-read "Set export format: " '("dot" "svg")))
 	  (obvz-export-file (expand-file-name (read-file-name "Export file: ")))
@@ -329,6 +384,7 @@
 	
 
 (defun obvz-set-layout-type ()
+    "set the layout algorithm; choices are graphviz dot and a custom force-directed algorithm"
     (interactive)
     (setq obvz-layout-type (completing-read "Set layout type: " '("dot" "force")))
     (obvz-send-to-python (json-encode `(("layout_type" . ,obvz-layout-type))))
