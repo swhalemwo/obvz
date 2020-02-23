@@ -1,73 +1,102 @@
 * obvz: visualizing org-brain relationships
 
-/currently rewriting most code for easier access (switching from graph-tool no networkx, testing additional communication interfaces) -> stuff is probably broken/
+/currently rewriting most code for easier access (switching from graph-tool no networkx, testing additional communication interfaces) -> stuff is probably broken/WIP/
 
 
 keyboard-driven concept mapping visualization in emacs, featuring
 - non-overlapping nodes
-- animated transitions that reuse node positions
+- animated transitions 
 - toggleable node text
+- force-directed or hierarchical layout
 
+General idea: replace my paper scribbles of relationships between concepts (sheet gets full, structure at first unclear) with a more sophisticated digital approach
 
+In my studies I often found it difficult when approaching new topics so see how the different concepts related. 
+
+My paper drawings of the concept relationships would grow larger and become increasingly complex as I was trying to integrate new information. This is my attempt to manage these concepts relations in a more structured approach. 
 
 ** Requirements
 - [[https://github.com/Kungsgeten/org-brain][org-brain]]
-- [[https://zeromq.org/][zmq]] bindings for [[https://zeromq.org/languages/python/][python]] and [[https://github.com/dzop/emacs-zmq][elisp]] 
-- PyQt5, numpy, networkx, Pillow
+- PyQt5, numpy, networkx, Pillow, graphviz: *add pip install string here*
+
+
+*** Connectivity
+obvz offers multiple possibilities to communicate between emacs and Python:
+- dbus (default; it requires no further packages due to dbus inclusion in emacs and PyQt)
+- [[https://zeromq.org/][zmq]], in which case bindings for [[https://zeromq.org/languages/python/][python]] and [[https://github.com/dzop/emacs-zmq][elisp]] have to be installed
+  this also requires uncommenting the "zmq section" at the bottom of obvz.el
+  
+the connection type can be specified with =setq obvz-connection-type= 
+
 
 ** Installation:
 - load the =obr-viz.el= functions/variables (it's not a complete package yet)
-- set =obvz-dir= to the obvz directory
+- set =obvz-dir= to the main folder directory
 
-** Start
-- run =M-x obviz-start= to open a PyQt window (or run obvz.py in a terminal)
+** Start & Stop
+- run =M-x obvz-start= to open a PyQt window (or run obvz.py in a terminal)
+- when done, run =M-x obvz-stop= to unload the obvz functions from the org-brain hooks
 
 ** Usage:
-- in org-brain, pin/unpin nodes to visualize 
-  - the node itself
-  - friends
-  - children (parent-child relationships are visualized except when the parent starts with "cls_" (class))
-  - friends of children
-- changes in the graph are mostly updated automatically, with two exceptions:
-  - changes of the text body of node, 
-  - restarting obvz after it has been closed a previous time 
-  - in these cases, the layout can be updated with =U= (=obvz-update-graph=)
-- generate a new layout (without changes in the graph) with =R= (=obvz-reposition-nodes=): 
-  - normal execution does minor modifications (it re-applies the [[https://en.wikipedia.org/wiki/Force-directed_graph_drawing][force-directed drawing algorithm]] to the current layout); 
-  - execution with =C-u= generates a new layout based on random starting positions
-- switch display of node body text on and off with =N= (=obvz-switch-node-text-inclusion=)
-  - the node body text follows the same convention as in org-brain, i.e. file text until first headline (or markup symbol)
+
+It seems to me that a key aspect of data visualization in general and network visualization in particular is to focus only on the few relevant parts of the brain. Consequently, large parts of obvz involve slicing and dicing the org-brain in customizable ways. 
+
+*Edge direction*: I myself prefer directed edges. While hierarchical relations go from parents to children and are hence obviously directed, direction is less straightforward with friend relationships. To give direction to =org-brain's= friend relationships, obvz uses one-way edge annotations (created in org-brain with =C-u e=) to infer the direction of the friendship edge (the role of edge annotations can be customized). 
+
+*Node selection* works via org-brain's feature of pinning nodes (=n=), which visualizes
+- the node itself 
+- friends (to which the edges are annotated)
+- children (parent-child relationships are visualized as well)
+- friends of children (to which the edges are annotated)
+
+*Class nodes* can be used to select nodes quickly. A class node starts with "cls_" and is intended to be parent to nodes of the same kind, such as people, places, or objects. Since class nodes are normal org-brain nodes, objects can be members (i.e. children) of multiple classes. Class nodes are intended for node selection and are not visualized themselves when pinned. 
+
+
+*Layout*: switch layout type between force-directed drawing (named "force") and graphviz hierarchical dot layout (named "dot") with =M-x obvz-set-layout-type=. The dot layout is deterministic, the force-directed layout is unlikely to produce the same node positions every time. In the force-directed layout, new node positions can be generated via =R= (=M-x obvz-reposition-nodes=): 
+- normal execution does minor modifications (it re-applies the [[https://en.wikipedia.org/wiki/Force-directed_graph_drawing][force-directed drawing algorithm]] to the current layout); this can sometimes "iron out" "knots" in the graph.
+- execution with prefix =C-u= generates a new layout based on random starting positions.
+
+
+*Node text*: switch display of node body text on and off with =N= (=M-x obvz-switch-node-text-inclusion=). The node body text follows the same convention as in org-brain, i.e. file text until first headline or markup symbol. 
 
 
 ** Customization
-- =obvz-only-use-annotated-edges=: whether friend links are only included when annotated (default =t=)
+- =obvz-only-use-annotated-edges=: whether friend links are only included when annotated (default =t=). (=t= is not strictly necessary for the dot layout, but strongly recommended)
 - =obvz-draw-arrow=: whether arrowheads are drawn at the tips of edges (default =t=)
 - =obvz-highlight-current-node=: whether the currently selected node is highlighted (default =t=)
 
 
-** Particularities/Limitations:
-- on the python side, all edges are modeled as directed
-  - however, setting =obvz-draw-arrow= to nil creates a decent impression of an undirected graph 
-- node body text is (currently) not being automatically wrapped; it has to be manually ensured that nodes do not become too wide or long
-- the layout algorithm can be compiled manually with [[https://github.com/serge-sans-paille/pythran][pythran]] (the resulting .so file then has to be moved into the top directory)
+** Export
+obvz is intended primarily as a digital sketch board board rather than a sophisticated visualization tool. For more sophisticated visualization I recommend to export the displayed graph to dot with =M-x obvz-export=. If the quick-and-dirty visualization of obvz are considered sufficient, =M-x obvz-export= can also export the current window content to svg. 
 
+
+** Particularities/Limitation
+- node body text is (currently) not being automatically wrapped; it has to be manually ensured that nodes do not become too wide or long
+- changes in the graph are mostly updated automatically, with two exceptions:
+  - changes of the node body text
+  - restarting obvz after it has been closed a previous time 
+  - in these cases, the layout can be updated with =U= (=M-x obvz-update-graph=)
+- the force-directed layout algorithm (layout_optim/ovlp_func_v2.py) can also be compiled manually with [[https://github.com/serge-sans-paille/pythran][pythran]] (the resulting .so file then has to be moved into the top directory)
+- it is not completely clear to me how node height and width work in the graphviz dot layout. the current configuration (found by trial and error) seems to prevent node overlaps, but it is unclear if they are completely avoided. 
+- the dot layout may not fit the screen
+- the dot layout may not be consistent if the graph is not acyclic   
+- if node text is included when exporting to dot, special characters (like "&") that can cause dot to malfunction have to be manually removed
 
 ** Future Ideas
-- multiedges, hyperedges -> rethink data model, enhance node/edge selection (e.g. documents of links)
+- enhanced datamodel: embed concept relationships in documents: e.g. hyperedges
+- multiedges 
 - edge labels visualization
 - prevent edge overlap in reciprocal relations
 - node properties visualization
 - more node shapes
-- more layout algorithms, especially hierarchical (like graphviz dot)
-- rewrite layout algorithm in pure C/C++
-- fix/manually move nodes
+- more layout algorithms
+- rewrite force-directed layout algorithm in pure C/C++
+- fixate/manually position nodes
 - re-integrate with EAF
 - minimize edges crossing nodes: repellent edges? 
 - virtual windows to quickly switch between graphs
-- save/load layouts, rendering to image
+- save/load layouts
 
 *Disclaimer*: This is my first project of an application, as well as using Elisp and GUIs. Feedback, feature suggestions and bug reports are very welcome!
-
-(/a previous version used the promising [[https://github.com/manateelazycat/emacs-application-framework][EAF]], however testing/debugging seemed to be easier with zmq. i hope to implement obvz as an EAF app at a later point in time./)
 
 
