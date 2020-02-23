@@ -245,6 +245,7 @@ class obvz_window(QtWidgets.QWidget):
         self.tpls = []
         self.vd = {}
         self.vdr = {}
+        self.node_texts_proc = {}
         
         self.qt_coords = np.array([])
         self.dim_ar = np.array([])
@@ -308,6 +309,7 @@ class obvz_window(QtWidgets.QWidget):
         self.vd = {}
         self.vdr = {}
         self.node_texts_raw = {}
+        self.node_texts_proc = {}
         
         self.qt_coords = np.array([])
         self.dim_ar = np.array([])
@@ -377,7 +379,12 @@ class obvz_window(QtWidgets.QWidget):
             if self.node_texts_raw != new_graph_dict['node_texts'] and new_graph_dict['node_texts'] != None:
                 logging.info('node texts have changed')
                 logging.info(self.g.nodes())
-                self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])
+                
+                self.proc_node_texts(new_graph_dict['node_texts'])
+                
+                # self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])
+                self.set_node_wd_ht(list(self.g.nodes()), self.node_texts_proc)
+                
                 self.node_texts_raw = new_graph_dict['node_texts']
                 update_me = 1
 
@@ -393,7 +400,18 @@ class obvz_window(QtWidgets.QWidget):
             logging.info('graph is same, just update current node')
             self.update()
 
+    def proc_node_texts(self, node_texts):
+        """clean the node texts out of 
+        - empty lines
+        - links (indidcated by [[)"""
 
+        for i in self.g.nodes():
+            node_text_lines = [k for k in node_texts[i].split('\n') if len(k) > 0]
+            node_text_lines2 = [k for k  in node_text_lines if "[[" not in k]
+            logging.info(['node', i])
+            logging.info(['node text lines: ', node_text_lines2])
+            
+            self.node_texts_proc[i] = node_text_lines2
 
 
     def get_node_text_dimensions(self, fm_nt, node_text):
@@ -407,9 +425,12 @@ class obvz_window(QtWidgets.QWidget):
         # maybe implement some wrapping of long lines
         # but would have to determine where to wrap them, might be not straightforward with long lines
 
-        node_text_lines = [i for i in node_text.split('\n') if len(i) > 0]
+        # node_text_lines = [i for i in node_text.split('\n') if len(i) > 0]
+        # get rid of links
+        # node_text_lines2 = [i for i in node_text_lines if "[[" not in i]
                 
-        node_rects = [fm_nt.boundingRect(i) for i in node_text_lines]
+        # node_rects = [fm_nt.boundingRect(i) for i in node_text_lines2]
+        node_rects = [fm_nt.boundingRect(i) for i in node_text]
         widths = [i.width() for i in node_rects]
         heights = [i.height() for i in node_rects]
 
@@ -883,10 +904,11 @@ class obvz_window(QtWidgets.QWidget):
             
             qp.setFont(QFont('Arial', self.node_text_size * scl))
             
-            node_text_lines_raw = self.node_texts_raw[t[2]]
-            node_text_lines =  [i for i in node_text_lines_raw.split('\n') if len(i) > 0]
+            # node_text_lines_raw = self.node_texts_raw[t[2]]
+            # node_text_lines =  [i for i in node_text_lines_raw.split('\n') if len(i) > 0]
             c = 1
-            for t2 in node_text_lines:
+            # for t2 in node_text_lines:
+            for t2 in self.node_texts_proc[t[2]]:
                 qp.drawText(xpos, ypos + self.node_text_vflush*c, t2)
                 c+=1
             
