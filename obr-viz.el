@@ -2,6 +2,16 @@
 
 
 
+(defun obvz-flatten-list (mylist)
+    "flatten list function because somehow only there in emacs 27?"
+  (cond
+   ((null mylist) nil)
+   ((atom mylist) (list mylist))
+   (t
+    (append (obvz-flatten-list (car mylist)) (obvz-flatten-list (cdr mylist))))))
+
+
+
 (defun obvz-create-children-links (parent child)
     """basic hierarchical function"""
     (concat (obvz-get-node-name parent) " -- " (obvz-get-node-name child) " -- isa"))
@@ -98,10 +108,10 @@
 	    (push (mapcar 'loop-over-upper-level-nodes nodes-upper-level) temp-res)
 
 	    ;; push nodes/links to local vars
-	    (mapc (lambda (nodex) (push nodex all-nodes)) (flatten-list (mapcar 'cdr (car temp-res))))
-	    (mapc (lambda (linkx) (push linkx all-links)) (flatten-list (mapcar 'car (car temp-res))))
+	    (mapc (lambda (nodex) (push nodex all-nodes)) (obvz-flatten-list (mapcar 'cdr (car temp-res))))
+	    (mapc (lambda (linkx) (push linkx all-links)) (obvz-flatten-list (mapcar 'car (car temp-res))))
 	    
-	    (setq nodes-upper-level (flatten-list (mapcar 'cdr (car temp-res))))
+	    (setq nodes-upper-level (obvz-flatten-list (mapcar 'cdr (car temp-res))))
 	    (setq temp-res ())
 
 	    )
@@ -141,9 +151,9 @@
 	    ;; need to deal with lists of lists, but can't aggressively flatten
 	    (mapcar (lambda (i) (mapcar (lambda (k) (push k all-nodes)) i)) temp-nodes2)
 	    ;; deal with links
-	    (mapc (lambda (linkx) (push linkx all-links)) (flatten-list (mapcar 'car  temp-res)))
+	    (mapc (lambda (linkx) (push linkx all-links)) (obvz-flatten-list (mapcar 'car  temp-res)))
 	    
-	    ;; (setq nodes-upper-level (flatten-list (mapcar 'cdr (car temp-res))))
+	    ;; (setq nodes-upper-level (obvz-flatten-list (mapcar 'cdr (car temp-res))))
 	    (setq nodes-upper-level ())
 	    (mapcar (lambda (i) (mapcar (lambda (k) (push k nodes-upper-level)) i)) temp-nodes2)
 	    (setq nodes-upper-level2 nodes-upper-level)
@@ -251,7 +261,7 @@
 	(setq friend-res (obvz-get-friend-links uniq-nodes))
 	(setq friend-links (cdr friend-res))
 	(push friend-links total-links)
-	(setq all-links (flatten-list total-links))
+	(setq all-links (obvz-flatten-list total-links))
 	(setq link-string (mapconcat 'identity all-links ";"))
 
 
