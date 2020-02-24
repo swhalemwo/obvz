@@ -1,4 +1,6 @@
 (require 'cl)
+(require 'json)
+(require 'dbus)
 
 
 
@@ -286,7 +288,7 @@
 		    (setq node-texts (mapcar 'org-brain-text uniq-nodes))
 		    (setq node-text-alist (mapcar* #'cons (mapcar 'obvz-get-node-name uniq-nodes) node-texts))
 		    )
-	    (setq node-text-alist (mapcar* #'cons (mapcar 'obvz-get-node-name uniq-nodes) (make-list (len uniq-nodes) "")))
+	    (setq node-text-alist (mapcar* #'cons (mapcar 'obvz-get-node-name uniq-nodes) (make-list (length uniq-nodes) "")))
 	    )
 	;; (message "node texts there")
 
@@ -366,7 +368,7 @@
 (defun obvz-start ()
     (interactive)
     (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph)
-    (shell-command (mapconcat 'identity `("cd" ,obvz-dir "&&" obvz-python-version "obr_viz_server.py" ,obvz-connection-type ,obvz-layout-type "&") " "))
+    (shell-command (mapconcat 'identity `("cd" ,obvz-dir "&&" ,obvz-python-version "obr_viz_server.py" ,obvz-connection-type ,obvz-layout-type "&") " "))
      
     (setq obvz-most-recent-config ()))
     
