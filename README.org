@@ -3,7 +3,7 @@
 /currently rewriting most code for easier access (switching from graph-tool no networkx, testing additional communication interfaces) -> stuff is probably broken/WIP/
 
 
-keyboard-driven concept mapping visualization in emacs, featuring
+keyboard-driven concept mapping visualization in emacs + python, featuring
 - non-overlapping nodes
 - animated transitions 
 - toggleable node text
@@ -15,6 +15,8 @@ In my studies I often found it difficult when approaching new topics so see how 
 
 My paper drawings of the concept relationships would grow larger and become increasingly complex as I was trying to integrate new information. This is my attempt to manage these concepts relations in a more structured approach. 
 
+tables too rigid
+
 ** Requirements
 - [[https://github.com/Kungsgeten/org-brain][org-brain]]
 - PyQt5, numpy, networkx, Pillow, graphviz: *add pip install string here*
@@ -22,9 +24,9 @@ My paper drawings of the concept relationships would grow larger and become incr
 
 *** Connectivity
 obvz offers multiple possibilities to communicate between emacs and Python:
-- dbus (default; it requires no further packages due to dbus inclusion in emacs and PyQt)
+- dbus (default; it requires no further packages due to native dbus support in emacs and PyQt)
 - [[https://zeromq.org/][zmq]], in which case bindings for [[https://zeromq.org/languages/python/][python]] and [[https://github.com/dzop/emacs-zmq][elisp]] have to be installed
-  this also requires uncommenting the "zmq section" at the bottom of obvz.el
+  - this also requires uncommenting the "zmq section" at the bottom of obvz.el
   
 the connection type can be specified with =setq obvz-connection-type= 
 
@@ -35,13 +37,13 @@ the connection type can be specified with =setq obvz-connection-type=
 
 ** Start & Stop
 - run =M-x obvz-start= to open a PyQt window (or run obvz.py in a terminal)
-- when done, run =M-x obvz-stop= to unload the obvz functions from the org-brain hooks
+- when done, close the PyQt window and run =M-x obvz-stop= to unload the obvz functions from the org-brain hooks
 
 ** Usage:
 
 It seems to me that a key aspect of data visualization in general and network visualization in particular is to focus only on the few relevant parts of the brain. Consequently, large parts of obvz involve slicing and dicing the org-brain in customizable ways. 
 
-*Edge direction*: I myself prefer directed edges. While hierarchical relations go from parents to children and are hence obviously directed, direction is less straightforward with friend relationships. To give direction to =org-brain's= friend relationships, obvz uses one-way edge annotations (created in org-brain with =C-u e=) to infer the direction of the friendship edge (the role of edge annotations can be customized). 
+*Edge direction*: I myself prefer directed edges. While hierarchical relations go from parents to children and are hence obviously directed, direction is less straightforward with friend relationships. To give direction to =org-brain's= friend relationships, obvz uses *one-way edge annotations* (created in org-brain with =C-u e=) to infer the direction of the friendship edge (the role of edge annotations can be customized with =obvz-only-use-annotated-edges=). 
 
 *Node selection* works via org-brain's feature of pinning nodes (=n=), which visualizes
 - the node itself 
@@ -49,16 +51,21 @@ It seems to me that a key aspect of data visualization in general and network vi
 - children (parent-child relationships are visualized as well)
 - friends of children (to which the edges are annotated)
 
-*Class nodes* can be used to select nodes quickly. A class node starts with "cls_" and is intended to be parent to nodes of the same kind, such as people, places, or objects. Since class nodes are normal org-brain nodes, objects can be members (i.e. children) of multiple classes. Class nodes are intended for node selection and are not visualized themselves when pinned. 
+*Class nodes* can be used to select nodes quickly. A class node starts with "cls_" and is intended to be parent to nodes of the same kind, such as people, places, or objects. Since class nodes are normal org-brain nodes, objects can be members (i.e. children) of multiple classes. Class nodes are intended only for node selection and are not visualized themselves when pinned. 
 
 
 *Layout*: switch layout type between force-directed drawing (named "force") and graphviz hierarchical dot layout (named "dot") with =M-x obvz-set-layout-type=. The dot layout is deterministic, the force-directed layout is unlikely to produce the same node positions every time. In the force-directed layout, new node positions can be generated via =R= (=M-x obvz-reposition-nodes=): 
 - normal execution does minor modifications (it re-applies the [[https://en.wikipedia.org/wiki/Force-directed_graph_drawing][force-directed drawing algorithm]] to the current layout); this can sometimes "iron out" "knots" in the graph.
 - execution with prefix =C-u= generates a new layout based on random starting positions.
 
+example: switching between force-directed and dot-hierarchical layout
+[[file:demo/layout_demo.gif]]
+
+[[file:demo/reposition_demo.gif]]
 
 *Node text*: switch display of node body text on and off with =N= (=M-x obvz-switch-node-text-inclusion=). The node body text follows the same convention as in org-brain, i.e. file text until first headline or markup symbol. 
 
+[[file:demo/text_inclusion_demo.gif]]
 
 ** Customization
 - =obvz-only-use-annotated-edges=: whether friend links are only included when annotated (default =t=). (=t= is not strictly necessary for the dot layout, but strongly recommended)
