@@ -18,8 +18,8 @@ obvz is an attempt to manage these concepts relations in a more effective approa
 
 ** Requirements
 - [[https://github.com/Kungsgeten/org-brain][org-brain]], which requires at least emacs 26.1
-- =python3=: it works for me with 3.6 and 3.7. 
-- =PyQt5=: I don't quite know how to navigate jungle of the various packages across which the PyQt5 functions are distributed. On Ubuntu 18.04 I need =python3-pyqt5= and =python3-pyqt5.qtsvg=, I'm not sure how other distributions/OSs handle it. maybe PyQt5 can also be completely installed with pip3 (but not for me)
+- =python3=: it definitely works for me with 3.6 and 3.7. 
+- =PyQt5=: I don't quite know how to navigate jungle of the various packages across which the PyQt5 functions are distributed. On Ubuntu 18.04 I need =python3-pyqt5= and =python3-pyqt5.qtsvg=, I'm not sure how other distributions/OSs handle it. maybe PyQt5 can also be completely installed with pip3
 - =graphviz= as a system package as well as its python bindings (installable with pip3)
 - =numpy, networkx, Pillow=: available in pip3
 
@@ -31,7 +31,7 @@ obvz offers multiple possibilities to communicate between emacs and Python:
 - [[https://zeromq.org/][zmq]], in which case bindings for [[https://zeromq.org/languages/python/][python]] and [[https://github.com/dzop/emacs-zmq][elisp]] have to be installed
   - this also requires uncommenting the "zmq section" at the bottom of obvz.el
   
-the connection type can be specified with =setq obvz-connection-type=. 
+the connection type can be specified by setting =obvz-connection-type=
 
 
 ** Installation:
@@ -70,7 +70,7 @@ It seems to me that a key aspect of data visualization in general and network vi
 - =obvz-highlight-current-node=: whether the currently selected node is highlighted (default =t=)
 
 ** Export
-obvz is intended primarily as a digital sketch board board rather than a sophisticated visualization tool. For more sophisticated visualization I recommend to export the displayed graph to dot with =M-x obvz-export=. If the quick-and-dirty visualization of obvz are considered sufficient, =M-x obvz-export= can also export the current window content to svg. 
+obvz is intended primarily as a digital sketch board rather than a sophisticated visualization tool. For more sophisticated visualization I recommend to export the displayed graph to dot with =M-x obvz-export=. If the quick-and-dirty visualization of obvz are considered sufficient, =M-x obvz-export= can also export the current window content to svg. 
 
 ** Examples
 *** switching between force-directed and dot-hierarchical layout
