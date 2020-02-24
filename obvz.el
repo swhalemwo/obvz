@@ -426,8 +426,6 @@
 
 (setq obvz-connection-type "dbus")
 
-(setq obvz-python-version "python3")
-(setq obvz-dir "~/Dropbox/personal_stuff/obr-viz/")
 (setq obvz-include-node-texts nil)
 (setq obvz-only-use-annotated-edges t)
 (setq obvz-most-recent-config ())
@@ -441,6 +439,10 @@
 (define-key org-brain-visualize-mode-map "N" 'obvz-switch-node-text-inclusion)
 (define-key org-brain-visualize-mode-map "R" 'obvz-reposition-nodes)
 (define-key org-brain-visualize-mode-map "U" 'obvz-update-graph-hard)
+
+;; ========== set these before loading the functions ==============
+(setq obvz-python-version "python3")
+(setq obvz-dir "~/obvz/")
 
 
 ;; ============== zmq section ================
