@@ -9,16 +9,16 @@ keyboard-driven concept mapping visualization in emacs + python, featuring
 - toggleable node text
 - force-directed or hierarchical layout
 
-General idea: replace my paper scribbles of relationships between concepts (sheet gets full, structure at first unclear) with a more sophisticated digital approach
+** Underlying idea
 
-In my studies I often found it difficult when approaching new topics so see how the different concepts related. 
+Throughout my studies, there were many I had to structure complex information from various sources such as articles, books, lectures or conversations. Detailed nodes of individual did not connect common bits of information. Literature tables imposed an overly rigid structure. Sketches of relationships between concepts would soon fill the paper and aggravate the addition of more recent information. 
 
-My paper drawings of the concept relationships would grow larger and become increasingly complex as I was trying to integrate new information. This is my attempt to manage these concepts relations in a more structured approach. 
+obvz is an attempt to manage these concepts relations in a more effective approach. 
 
-tables too rigid
 
 ** Requirements
 - [[https://github.com/Kungsgeten/org-brain][org-brain]]
+- *python 3*: check versions
 - PyQt5, numpy, networkx, Pillow, graphviz: *add pip install string here*
 
 
@@ -28,11 +28,11 @@ obvz offers multiple possibilities to communicate between emacs and Python:
 - [[https://zeromq.org/][zmq]], in which case bindings for [[https://zeromq.org/languages/python/][python]] and [[https://github.com/dzop/emacs-zmq][elisp]] have to be installed
   - this also requires uncommenting the "zmq section" at the bottom of obvz.el
   
-the connection type can be specified with =setq obvz-connection-type= 
+the connection type can be specified with =setq obvz-connection-type=. 
 
 
 ** Installation:
-- load the =obr-viz.el= functions/variables (it's not a complete package yet)
+- load the =obr-viz.el= functions/variables (obvz is not a complete package yet)
 - set =obvz-dir= to the main folder directory
 
 ** Start & Stop
@@ -43,7 +43,7 @@ the connection type can be specified with =setq obvz-connection-type=
 
 It seems to me that a key aspect of data visualization in general and network visualization in particular is to focus only on the few relevant parts of the brain. Consequently, large parts of obvz involve slicing and dicing the org-brain in customizable ways. 
 
-*Edge direction*: I myself prefer directed edges. While hierarchical relations go from parents to children and are hence obviously directed, direction is less straightforward with friend relationships. To give direction to =org-brain's= friend relationships, obvz uses *one-way edge annotations* (created in org-brain with =C-u e=) to infer the direction of the friendship edge (the role of edge annotations can be customized with =obvz-only-use-annotated-edges=). 
+*Edge direction*: I myself prefer directed edges. While hierarchical relations go from parents to children and are hence obviously directed, direction is less straightforward with friend relationships. To solve this issue and give direction to =org-brain's= friend relationships, obvz uses *edge annotations*. These edge annotations are created in org-brain either as bi-directional (=e=) or one-directional (=C-u e=). The role of edge annotations can be customized with =obvz-only-use-annotated-edges=. 
 
 *Node selection* works via org-brain's feature of pinning nodes (=n=), which visualizes
 - the node itself 
@@ -53,19 +53,16 @@ It seems to me that a key aspect of data visualization in general and network vi
 
 *Class nodes* can be used to select nodes quickly. A class node starts with "cls_" and is intended to be parent to nodes of the same kind, such as people, places, or objects. Since class nodes are normal org-brain nodes, objects can be members (i.e. children) of multiple classes. Class nodes are intended only for node selection and are not visualized themselves when pinned. 
 
-
-*Layout*: switch layout type between force-directed drawing (named "force") and graphviz hierarchical dot layout (named "dot") with =M-x obvz-set-layout-type=. The dot layout is deterministic, the force-directed layout is unlikely to produce the same node positions every time. In the force-directed layout, new node positions can be generated via =R= (=M-x obvz-reposition-nodes=): 
+*Layout*: it is possible to view the graph in a force-directed layout (named "force") or the graphviz hierarchical dot layout (named "dot") with =M-x obvz-set-layout-type=. While the dot layout is deterministic, the force-directed layout is unlikely to produce the same node positions every time. In the force-directed layout, new node positions can be generated via =R= (=M-x obvz-reposition-nodes=): 
 - normal execution does minor modifications (it re-applies the [[https://en.wikipedia.org/wiki/Force-directed_graph_drawing][force-directed drawing algorithm]] to the current layout); this can sometimes "iron out" "knots" in the graph.
 - execution with prefix =C-u= generates a new layout based on random starting positions.
 
-
-*Node text*: switch display of node body text on and off with =N= (=M-x obvz-switch-node-text-inclusion=). The node body text follows the same convention as in org-brain, i.e. file text until first headline or markup symbol. 
+*Node text*: switch display of node body text on and off with =N= (=M-x obvz-switch-node-text-inclusion=). The node body text follows the same convention as in org-brain, i.e. file/entry text until next headline.
 
 ** Customization
 - =obvz-only-use-annotated-edges=: whether friend links are only included when annotated (default =t=). (=t= is not strictly necessary for the dot layout, but strongly recommended)
 - =obvz-draw-arrow=: whether arrowheads are drawn at the tips of edges (default =t=)
 - =obvz-highlight-current-node=: whether the currently selected node is highlighted (default =t=)
-
 
 ** Export
 obvz is intended primarily as a digital sketch board board rather than a sophisticated visualization tool. For more sophisticated visualization I recommend to export the displayed graph to dot with =M-x obvz-export=. If the quick-and-dirty visualization of obvz are considered sufficient, =M-x obvz-export= can also export the current window content to svg. 
@@ -103,12 +100,12 @@ obvz is intended primarily as a digital sketch board board rather than a sophist
 - node properties visualization
 - more node shapes
 - more layout algorithms
-- rewrite force-directed layout algorithm in pure C/C++
+- rewrite force-directed layout algorithm in C/C++
 - fixate/manually position nodes
 - re-integrate with EAF
 - minimize edges crossing nodes: repellent edges? 
 - virtual windows to quickly switch between graphs
 - save/load layouts
 
-*Disclaimer*: This is my first project of an application, as well as using Elisp and GUIs. Feedback, feature suggestions and bug reports are very welcome!
+*Disclaimer*: This is my first project of writing an application, as well as using Elisp and GUIs. Feedback, feature suggestions and bug reports are very welcome!
 

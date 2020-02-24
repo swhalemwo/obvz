@@ -227,8 +227,8 @@ class obvz_window(QtWidgets.QWidget):
         self.dt = self.init_t/(self.def_itr) # delta temperature, (int) sets number of iterations
         self.rep_nd_brd_start = 0.3 # relative size of end time frame in which node borders become repellant
         self.k = 30.0 # desired distance? 
-        self.step = 6.0 # how many steps realignment takes
-        self.update_interval = 40
+        self.step = 8.0 # how many steps realignment takes
+        self.update_interval = 40 # time for step in milliseconds
         
         # needs to be as command line parameter? think so, how else would it know how to start
         # also needs function to change it
@@ -799,14 +799,15 @@ class obvz_window(QtWidgets.QWidget):
         #     print('LUL')
         #     print(self.chng_ar)
 
-
         self.update()
+
         if self.ctr == self.step:
             
             self.base_pos_ar = self.qt_coords
 
             self.ctr = 0
             self.paint_timer.stop()
+
 
         self.ctr += 1
 

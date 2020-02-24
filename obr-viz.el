@@ -400,7 +400,6 @@
     (obvz-send-to-python (json-encode `(("layout_type" . ,obvz-layout-type))))
     )
 
-
 ;; connection functions
 
 (defun obvz-send-to-python (dict-str-to-send)
@@ -421,17 +420,12 @@
     method args))
 	
 	    
-
 ;; (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain
-
-(setq obvz-highlight-current-node nil)
-
-
 
 (setq obvz-connection-type "dbus")
 
 (setq obvz-dir "~/Dropbox/personal_stuff/obr-viz/")
-(setq obvz-include-node-texts t)
+(setq obvz-include-node-texts nil)
 (setq obvz-only-use-annotated-edges t)
 (setq obvz-most-recent-config ())
 (setq obvz-draw-arrow t)
