@@ -58,14 +58,8 @@ It seems to me that a key aspect of data visualization in general and network vi
 - normal execution does minor modifications (it re-applies the [[https://en.wikipedia.org/wiki/Force-directed_graph_drawing][force-directed drawing algorithm]] to the current layout); this can sometimes "iron out" "knots" in the graph.
 - execution with prefix =C-u= generates a new layout based on random starting positions.
 
-example: switching between force-directed and dot-hierarchical layout
-[[file:demo/layout_demo.gif]]
-
-[[file:demo/reposition_demo.gif]]
 
 *Node text*: switch display of node body text on and off with =N= (=M-x obvz-switch-node-text-inclusion=). The node body text follows the same convention as in org-brain, i.e. file text until first headline or markup symbol. 
-
-[[file:demo/text_inclusion_demo.gif]]
 
 ** Customization
 - =obvz-only-use-annotated-edges=: whether friend links are only included when annotated (default =t=). (=t= is not strictly necessary for the dot layout, but strongly recommended)
@@ -75,6 +69,18 @@ example: switching between force-directed and dot-hierarchical layout
 
 ** Export
 obvz is intended primarily as a digital sketch board board rather than a sophisticated visualization tool. For more sophisticated visualization I recommend to export the displayed graph to dot with =M-x obvz-export=. If the quick-and-dirty visualization of obvz are considered sufficient, =M-x obvz-export= can also export the current window content to svg. 
+
+** Examples
+*** switching between force-directed and dot-hierarchical layout
+[[file:demo/layout_demo.gif]]
+
+*** updating node positions in force-directed graph
+
+[[file:demo/reposition_demo.gif]]
+
+*** toggling node text
+[[file:demo/text_inclusion_demo.gif]]
+
 
 
 ** Particularities/Limitation
@@ -105,5 +111,4 @@ obvz is intended primarily as a digital sketch board board rather than a sophist
 - save/load layouts
 
 *Disclaimer*: This is my first project of an application, as well as using Elisp and GUIs. Feedback, feature suggestions and bug reports are very welcome!
-
 
