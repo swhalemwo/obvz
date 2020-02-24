@@ -366,7 +366,7 @@
 (defun obvz-start ()
     (interactive)
     (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph)
-    (shell-command (mapconcat 'identity `("cd" ,obvz-dir "&& python3.7 obr_viz_server.py" ,obvz-connection-type ,obvz-layout-type "&") " "))
+    (shell-command (mapconcat 'identity `("cd" ,obvz-dir "&&" obvz-python-version "obr_viz_server.py" ,obvz-connection-type ,obvz-layout-type "&") " "))
      
     (setq obvz-most-recent-config ()))
     
@@ -424,6 +424,7 @@
 
 (setq obvz-connection-type "dbus")
 
+(setq obvz-python-version "python3")
 (setq obvz-dir "~/Dropbox/personal_stuff/obr-viz/")
 (setq obvz-include-node-texts nil)
 (setq obvz-only-use-annotated-edges t)
