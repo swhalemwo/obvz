@@ -1,7 +1,5 @@
 * obvz: visualizing org-brain relationships
 
-/currently rewriting most code for easier access (switching from graph-tool no networkx, testing additional communication interfaces) -> stuff is probably broken/WIP/
-
 
 keyboard-driven concept mapping visualization in emacs + python, featuring
 - non-overlapping nodes
@@ -19,30 +17,30 @@ obvz is an attempt to manage these concepts relations in a more effective approa
 ** Requirements
 - [[https://github.com/Kungsgeten/org-brain][org-brain]], which requires at least emacs 26.1
 - =python3=: it definitely works for me with 3.6 and 3.7. 
-- =PyQt5=: I don't quite know how to navigate jungle of the various packages across which the PyQt5 functions are distributed. On Ubuntu 18.04 I need =python3-pyqt5= and =python3-pyqt5.qtsvg=, I'm not sure how other distributions/OSs handle it. maybe PyQt5 can also be completely installed with pip3
-- =graphviz= as a system package as well as its python bindings (installable with pip3)
-- =numpy, networkx, Pillow=: available in pip3
+- =PyQt5=: I don't quite know how to navigate jungle of the various packages across which the PyQt5 functions are distributed. On Ubuntu 18.04 I need =python3-pyqt5= and =python3-pyqt5.qtsvg=, I'm not sure how other distributions/OSs handle it. maybe PyQt5 can also be completely installed with pip3.
+- =graphviz= as a system package as well as its python bindings (available with pip3).
+- =numpy, networkx, Pillow=: available in pip3.
 
 
 
 *** Connectivity
 obvz offers multiple possibilities to communicate between emacs and Python:
-- dbus (default; it requires no further packages due to native dbus support in emacs and PyQt)
-- [[https://zeromq.org/][zmq]], in which case bindings for [[https://zeromq.org/languages/python/][python]] and [[https://github.com/dzop/emacs-zmq][elisp]] have to be installed
-  - this also requires uncommenting the "zmq section" at the bottom of obvz.el
+- dbus (default; it requires no further packages due to native dbus support in emacs and PyQt).
+- [[https://zeromq.org/][zmq]], in which case bindings for [[https://zeromq.org/languages/python/][python]] and [[https://github.com/dzop/emacs-zmq][elisp]] have to be installed.
+  - this also requires uncommenting the "zmq section" at the bottom of obvz.el.
   
-the connection type can be specified by setting =obvz-connection-type=
+the connection type can be specified by setting =obvz-connection-type=.
 
 
 ** Installation:
-- set =obvz-dir= to the main folder directory
-- set =obvz-python-version= to your python3 version
-- load the =obr-viz.el= functions/variables (obvz is not a complete package yet)
+- set =obvz-dir= to the main folder directory.
+- set =obvz-python-version= to your python3 version.
+- load the =obr-viz.el= functions/variables (obvz is not a complete package yet).
 
 
 ** Start & Stop
-- run =M-x obvz-start= to open a PyQt window (or run obvz.py in a terminal)
-- when done, close the PyQt window and run =M-x obvz-stop= to unload the obvz functions from the org-brain hooks
+- run =M-x obvz-start= to open a PyQt window (or run obvz.py in a terminal).
+- when done, close the PyQt window and run =M-x obvz-stop= to unload the obvz functions from the org-brain hooks.
 
 ** Usage:
 
@@ -65,9 +63,9 @@ It seems to me that a key aspect of data visualization in general and network vi
 *Node text*: switch display of node body text on and off with =N= (=M-x obvz-switch-node-text-inclusion=). The node body text follows the same convention as in org-brain, i.e. file/entry text until next headline.
 
 ** Customization
-- =obvz-only-use-annotated-edges=: whether friend links are only included when annotated (default =t=). (=t= is not strictly necessary for the dot layout, but strongly recommended)
-- =obvz-draw-arrow=: whether arrowheads are drawn at the tips of edges (default =t=)
-- =obvz-highlight-current-node=: whether the currently selected node is highlighted (default =t=)
+- =obvz-only-use-annotated-edges=: whether friend links are only included when annotated (default =t=). (=t= is not strictly necessary for the dot layout, but strongly recommended).
+- =obvz-draw-arrow=: whether arrowheads are drawn at the tips of edges (default =t=).
+- =obvz-highlight-current-node=: whether the currently selected node is highlighted (default =t=).
 
 ** Export
 obvz is intended primarily as a digital sketch board rather than a sophisticated visualization tool. For more sophisticated visualization I recommend to export the displayed graph to dot with =M-x obvz-export=. If the quick-and-dirty visualization of obvz are considered sufficient, =M-x obvz-export= can also export the current window content to svg. 
@@ -86,16 +84,16 @@ obvz is intended primarily as a digital sketch board rather than a sophisticated
 
 
 ** Particularities/Limitation
-- node body text is (currently) not being automatically wrapped; it has to be manually ensured that nodes do not become too wide or long
+- node body text is (currently) not being automatically wrapped; it has to be manually ensured that nodes do not become too wide or long.
 - changes in the graph are mostly updated automatically, with two exceptions:
-  - changes of the node body text
-  - restarting obvz after it has been closed a previous time 
-  - in these cases, the layout can be updated with =U= (=M-x obvz-update-graph=)
-- the force-directed layout algorithm (layout_optim/ovlp_func_v2.py) can also be compiled manually with [[https://github.com/serge-sans-paille/pythran][pythran]] (the resulting .so file then has to be moved into the top directory)
+  - changes of the node body text.
+  - restarting obvz after it has been closed a previous time.
+  - in these cases, the layout can be updated with =U= (=M-x obvz-update-graph=).
+- the force-directed layout algorithm (layout_optim/ovlp_func_v2.py) can also be compiled manually with [[https://github.com/serge-sans-paille/pythran][pythran]] (the resulting .so file then has to be moved into the top directory).
 - it is not completely clear to me how node height and width work in the graphviz dot layout. the current configuration (found by trial and error) seems to prevent node overlaps, but it is unclear if they are completely avoided. 
-- the dot layout may not fit the screen
-- the dot layout may not be consistent if the graph is not acyclic   
-- if node text is included when exporting to dot, special characters (like "&") that can cause dot to malfunction have to be manually removed
+- the dot layout may not fit the screen.
+- the dot layout may not be consistent if the graph is not acyclic.
+- if node text is included when exporting to dot, special characters (like "&") that can cause dot to malfunction have to be manually removed.
 
 ** Future Ideas
 - enhanced datamodel: embed concept relationships in documents: e.g. hyperedges
