@@ -368,7 +368,7 @@
 (defun obvz-start ()
     (interactive)
     (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph)
-    (shell-command (mapconcat 'identity `("cd" ,obvz-dir "&&" ,obvz-python-version "obr_viz_server.py" ,obvz-connection-type ,obvz-layout-type "&") " "))
+    (shell-command (mapconcat 'identity `("cd" ,obvz-dir "&&" ,obvz-python-version "obvz.py" ,obvz-connection-type ,obvz-layout-type "&") " "))
      
     (setq obvz-most-recent-config ()))
     
