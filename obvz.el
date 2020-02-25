@@ -441,8 +441,8 @@
 (define-key org-brain-visualize-mode-map "U" 'obvz-update-graph-hard)
 
 ;; ========== set these before loading the functions ==============
-(setq obvz-python-version "python3")
-(setq obvz-dir "~/obvz/")
+;; (setq obvz-python-version "python3")
+;; (setq obvz-dir "~/obvz/")
 
 
 ;; ============== zmq section ================

@@ -17,8 +17,8 @@ obvz is an attempt to manage these concepts relations in a more effective approa
 ** Requirements
 - [[https://github.com/Kungsgeten/org-brain][org-brain]], which requires at least emacs 26.1
 - =python3=: it definitely works for me with 3.6 and 3.7. 
-- =PyQt5=: I don't quite know how to navigate jungle of the various packages across which the PyQt5 functions are distributed. On Ubuntu 18.04 I need =python3-pyqt5= and =python3-pyqt5.qtsvg=, I'm not sure how other distributions/OSs handle it. maybe PyQt5 can also be completely installed with pip3.
-- =graphviz= as a system package as well as its python bindings (available with pip3).
+- =PyQt5=: I don't quite know how to navigate jungle of the various packages across which the PyQt5 functions are distributed. On Ubuntu 18.04 I need =python3-pyqt5= and =python3-pyqt5.qtsvg=, I'm not sure how other distributions/OSs handle it. maybe PyQt5 can also be completely installed in pip3.
+- =graphviz= as a system package as well as its python bindings (available in pip3).
 - =numpy, networkx, Pillow=: available in pip3.
 
 
@@ -33,9 +33,9 @@ the connection type can be specified by setting =obvz-connection-type=.
 
 
 ** Installation:
-- set =obvz-dir= to the main folder directory.
-- set =obvz-python-version= to your python3 version.
-- load the =obr-viz.el= functions/variables (obvz is not a complete package yet).
+- setq =obvz-dir= to the main folder directory.  
+- setq =obvz-python-version= to your python3 version. 
+- load the =obvz.el= functions/variables (obvz is not a complete package yet).
 
 
 ** Start & Stop
