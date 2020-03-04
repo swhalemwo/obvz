@@ -123,15 +123,43 @@ Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> create_perm(Eigen:
 
 void blocker2(int SIZE, Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm) {
 
-  Eigen::MatrixXf mat = Eigen::MatrixXf::Random(SIZE * 2, SIZE * 2);
+    Eigen::MatrixXf mat = Eigen::MatrixXf::Random(SIZE * 2, SIZE * 2);
 
-  std::cout << mat << std::endl << std::endl;
+    std::cout << "input dist mat: \n" << mat << std::endl << std::endl;
 
-  mat.resize((SIZE * SIZE * 2), 2);
-  
-  std::cout << mat << std::endl << std::endl;
-  std::cout << perm * mat << std::endl << std::endl;;
- 
+    Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> mat_rowmaj(mat);
+
+
+    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> mat_rszd(mat_rowmaj.data(), SIZE*SIZE*2, 2);
+
+      
+    std::cout << "mat reshaped: \n" << mat_rszd << std::endl << std::endl;
+
+    // std::cout << perm.toDenseMatrix() << std::endl << std::endl;
+    
+    /// std::cout << perm * mat_rszd << std::endl << std::endl;
+
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> res_mat(SIZE*SIZE*2, 2);
+
+    res_mat << perm * mat_rszd;
+
+    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> res_rord(res_mat.data(), SIZE*SIZE, 4);
+
+    std::cout << "reorderd res: \n" << res_rord << std::endl;
+
+    
+    Eigen::VectorXf max_vec(SIZE*SIZE);
+    
+    max_vec = res_rord.rowwise().maxCoeff();
+
+    std::cout <<"maxvec: \n" << max_vec << "\n";
+
+    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> max_mat(max_vec.data(), SIZE, SIZE);
+
+    std::cout <<"max mat: \n" << max_mat << "\n";
+    
+    //std::cout << "max coefs: \n" << res_rord.rowwise().maxCoeff();
+    
 }
 
 
@@ -143,7 +171,7 @@ void timer_perm (int SIZE, Eigen::VectorXi row_order) {
     // std::cout << perm.toDenseMatrix();
 
     // run with same perm matrix multiple times
-    for (int i=0; i<2; i++){
+    for (int i=0; i<1; i++){
     	blocker2(SIZE, perm);
     }
 }
