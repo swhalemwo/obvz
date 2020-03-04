@@ -11,25 +11,34 @@
     get matrix blocks with eigen blocks, unoptimized
 
  */
-Eigen::MatrixXf blocker1 (int SIZE) {
+void blocker1 (int SIZE, Eigen::MatrixXf mat) {
 
     // Eigen::MatrixXf mat(4,4);
     // mat << 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16;
 
-    Eigen::MatrixXf mat = Eigen::MatrixXf::Random(SIZE*2,SIZE*2);
-    Eigen::MatrixXf res_mat = Eigen::MatrixXf::Random(SIZE,SIZE);
+    // Eigen::MatrixXf mat = Eigen::MatrixXf::Random(SIZE*2,SIZE*2);
+    Eigen::MatrixXf res_mat(SIZE,SIZE);
     
     // #pragma omp parallel for
+    float cell = 0;
     for (int i=0; i<SIZE; i++){
 	for (int k=0; k<SIZE-i; k++) {
-	    res_mat(i,k) = mat.block<2,2>(i*2,k*2).maxCoeff();
+	    cell = mat.block<2,2>(i*2,k*2).maxCoeff();
+
+	    res_mat(i,k) = cell;
+	    // res_mat(k,i) = cell;
 	}
     }
     // std::cout << mat.block<2,2>(0,0);
-    // std::cout << mat;
 
-    return res_mat;
+    
+    // std::cout << "res_mat block: \n" << res_mat << "\n";
+
+    
+    // return res_mat;
 }
+
+
 
 /**
    check how to get block-reduced array without looping over blocks
@@ -42,15 +51,15 @@ void blocker3 () {
 	4, 5, 6,
 	7, 8, 9, 10, 11,12,13,14,15,16;
 
-    std::cout << "M1" << std::endl << M1 << std::endl << std::endl;
+    // std::cout << "M1" << std::endl << M1 << std::endl << std::endl;
 
 
     Eigen::Map<Eigen::RowVectorXi> v1(M1.data(), M1.size());
-    std::cout << "v1:" << std::endl << v1 << std::endl << std::endl;
+    // std::cout << "v1:" << std::endl << v1 << std::endl << std::endl;
     
     Eigen::Matrix<int,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M2(M1);
 
-    std::cout << "M2:" << std::endl << M2 << std::endl << std::endl;
+    // std::cout << "M2:" << std::endl << M2 << std::endl << std::endl;
 
     
     
@@ -62,14 +71,14 @@ void blocker3 () {
 
     // Eigen::Map<Eigen::MatrixXf<Eigen::Dynamic,Eigen::Dynamic> > v2(M2.data());
     // Eigen::Map<Eigen::Matrix<int, 8, 2, Eigen::RowMajor> > v2(M2.data());
-    std::cout << "v2:" << std::endl << v2 << std::endl;
+    // std::cout << "v2:" << std::endl << v2 << std::endl;
     // std::cout << Eigen::Map < Eigen::Matrix<int,8,2> > (M1);
 
     // int array[8];
     // for(int i = 0; i < 8; ++i) array[i] = i;
     // std::cout << "Row-major:\n" << Eigen::Map<Eigen::Matrix<int,4,2, Eigen::RowMajor> >(array) << std::endl;
 
-    std::cout << "next try :\n" << Eigen::Map<Eigen::Matrix<int,8,2, Eigen::RowMajor> >(M2.data()) << std::endl;
+    // std::cout << "next try :\n" << Eigen::Map<Eigen::Matrix<int,8,2, Eigen::RowMajor> >(M2.data()) << std::endl;
 
     
     // works but needs to transpose
@@ -113,19 +122,26 @@ Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> create_perm(Eigen:
     // Eigen::VectorXi row_order(4);
     // row_order << 1,2,3,4;
     
-    std::cout << row_order;
+    // std::cout << row_order;
 
     Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm;
     perm.indices() = row_order;
 
-    return perm;
+    
+    return perm.transpose();
 }
 
-void blocker2(int SIZE, Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm) {
+/** 
+    get block information through reordering matrix
 
-    Eigen::MatrixXf mat = Eigen::MatrixXf::Random(SIZE * 2, SIZE * 2);
+ */
 
-    std::cout << "input dist mat: \n" << mat << std::endl << std::endl;
+
+void blocker2(Eigen::MatrixXf mat, int SIZE, Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm) {
+
+    // Eigen::MatrixXf mat = Eigen::MatrixXf::Random(SIZE * 2, SIZE * 2);
+
+    // std::cout << "input dist mat: \n" << mat << std::endl << std::endl;
 
     Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> mat_rowmaj(mat);
 
@@ -133,37 +149,62 @@ void blocker2(int SIZE, Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic,
     Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> mat_rszd(mat_rowmaj.data(), SIZE*SIZE*2, 2);
 
       
-    std::cout << "mat reshaped: \n" << mat_rszd << std::endl << std::endl;
-
+    // std::cout << "mat reshaped: \n" << mat_rszd << std::endl << std::endl;
     // std::cout << perm.toDenseMatrix() << std::endl << std::endl;
-    
     /// std::cout << perm * mat_rszd << std::endl << std::endl;
 
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> res_mat(SIZE*SIZE*2, 2);
 
+    
+
     res_mat << perm * mat_rszd;
+    // std::cout << "rows reorderd: \n" << res_mat;
+    
 
     Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> res_rord(res_mat.data(), SIZE*SIZE, 4);
 
-    std::cout << "reorderd res: \n" << res_rord << std::endl;
+    // std::cout << "reorderd res: \n" << res_rord << std::endl;
 
     
     Eigen::VectorXf max_vec(SIZE*SIZE);
     
     max_vec = res_rord.rowwise().maxCoeff();
 
-    std::cout <<"maxvec: \n" << max_vec << "\n";
+    // std::cout <<"maxvec: \n" << max_vec << "\n";
 
     Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> max_mat(max_vec.data(), SIZE, SIZE);
 
-    std::cout <<"max mat: \n" << max_mat << "\n";
+    // std::cout <<"max mat: \n" << max_mat << "\n";
     
     //std::cout << "max coefs: \n" << res_rord.rowwise().maxCoeff();
     
 }
 
+/** 
+    see if mapping can theoretically be fast enough 
+    results incorrect for now, just technical implementation
+ */
 
-void timer_perm (int SIZE, Eigen::VectorXi row_order) {
+void perm_basic (Eigen::MatrixXf mat, int SIZE, Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm) {
+    
+    Eigen::Map<Eigen::MatrixXf> mat_rszd(mat.data(), SIZE*SIZE*2, 2);
+
+    // Eigen::MatrixXf res_mat(SIZE*SIZE*2, 2);
+    // res_mat << perm * mat_rszd;
+    
+    // Eigen::Map<Eigen::MatrixXf> res_rord(res_mat.data(), SIZE*SIZE, 4);
+    Eigen::Map<Eigen::MatrixXf> res_rord(mat.data(), SIZE*SIZE, 4);
+    
+
+    Eigen::VectorXf max_vec(SIZE*SIZE);
+    max_vec = res_rord.rowwise().maxCoeff();
+
+    Eigen::Map<Eigen::MatrixXf> max_mat(max_vec.data(), SIZE, SIZE);
+	
+}
+
+
+void timer_perm (Eigen::MatrixXf dists, int SIZE, Eigen::VectorXi row_order) {
     // get perm
     
     Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm;
@@ -171,10 +212,31 @@ void timer_perm (int SIZE, Eigen::VectorXi row_order) {
     // std::cout << perm.toDenseMatrix();
 
     // run with same perm matrix multiple times
-    for (int i=0; i<1; i++){
-    	blocker2(SIZE, perm);
+    for (int i=0; i<250; i++){
+    	blocker2(dists, SIZE, perm);
     }
 }
+
+void timer_perm_basic (Eigen::MatrixXf dists, int SIZE, Eigen::VectorXi row_order) {
+    // get perm
+    
+    Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm;
+    perm = create_perm(row_order);
+    // std::cout << perm.toDenseMatrix();
+
+    // run with same perm matrix multiple times
+    for (int i=0; i<250; i++){
+    	perm_basic(dists, SIZE, perm);
+    }
+}
+
+
+void timer_block (int SIZE, Eigen::MatrixXf dists) {
+    for (int i=0; i<250; i++){
+	blocker1(SIZE, dists);
+    }
+}
+    
 
 PYBIND11_MODULE(eigen_block_test, m) {
     m.doc() = "block test";
@@ -183,5 +245,7 @@ PYBIND11_MODULE(eigen_block_test, m) {
     // m.def("blocker2", &blocker2, "asdf");
     // m.def("create_perm", &create_perm, "asdf");
     m.def("timer_perm", &timer_perm, "asdf");
+    m.def("timer_perm_basic", &timer_perm_basic, "asdf");
+    m.def("timer_block", &timer_block, "asdf");
 }
 
