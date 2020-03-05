@@ -5,6 +5,8 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 
+#include <Eigen/unsupported/Eigen/CXX11/Tensor>
+
 // #include <list>
 
 /** 
@@ -145,7 +147,7 @@ void blocker2(Eigen::MatrixXf mat, int SIZE, Eigen::PermutationMatrix<Eigen::Dyn
 
     Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> mat_rowmaj(mat);
 
-
+    
     Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> mat_rszd(mat_rowmaj.data(), SIZE*SIZE*2, 2);
 
       
@@ -189,18 +191,61 @@ void perm_basic (Eigen::MatrixXf mat, int SIZE, Eigen::PermutationMatrix<Eigen::
     
     Eigen::Map<Eigen::MatrixXf> mat_rszd(mat.data(), SIZE*SIZE*2, 2);
 
-    // Eigen::MatrixXf res_mat(SIZE*SIZE*2, 2);
-    // res_mat << perm * mat_rszd;
+    Eigen::MatrixXf res_mat(SIZE*SIZE*2, 2);
+    res_mat << perm * mat_rszd;
     
-    // Eigen::Map<Eigen::MatrixXf> res_rord(res_mat.data(), SIZE*SIZE, 4);
-    Eigen::Map<Eigen::MatrixXf> res_rord(mat.data(), SIZE*SIZE, 4);
+    Eigen::Map<Eigen::MatrixXf> res_rord(res_mat.data(), SIZE*SIZE, 4);
+    // Eigen::Map<Eigen::MatrixXf> res_rord(mat.data(), SIZE*SIZE, 4); // for skipping permutation
     
 
     Eigen::VectorXf max_vec(SIZE*SIZE);
     max_vec = res_rord.rowwise().maxCoeff();
 
-    Eigen::Map<Eigen::MatrixXf> max_mat(max_vec.data(), SIZE, SIZE);
+    // Eigen::Map<Eigen::MatrixXf> max_mat(max_vec.data(), SIZE, SIZE);
 	
+}
+
+
+
+
+void tensor_func2 (int SIZE, Eigen::MatrixXf stor_mat) {
+    // int array[SIZE*SIZE*4];
+    // for(int i = 0; i < SIZE*SIZE*4; ++i) array[i] = i;
+    // std::cout << "array" << array;
+
+    // Eigen::MatrixXi stor_mat = Eigen::MatrixXi::Random(SIZE*2, SIZE*2);
+        
+    // Eigen::MatrixXd m = (Eigen::MatrixXd::Random(SIZE*2,SIZE*2)+Eigen::MatrixXd::Ones(SIZE*2,SIZE*2))*5;  
+    // Eigen::MatrixXi stor_mat = m.cast<int>();
+
+    // std::cout << "stor_mat: \n" << stor_mat;
+
+    Eigen::Map<Eigen::MatrixXf, 0, Eigen::InnerStride<2>> stride1 (stor_mat.data(), SIZE,SIZE*2);
+    Eigen::Map<Eigen::MatrixXf, 0, Eigen::InnerStride<2>> stride2 (stor_mat.bottomRows(2*SIZE-1).data(), SIZE,SIZE*2);
+
+    // std::cout << "\nstride1: \n" << stride1;
+    // std::cout << "\nstride2: \n" << stride2;
+
+    Eigen::MatrixXf join_mat(SIZE*2, SIZE*2);
+    join_mat << stride1, stride2;
+
+    // std::cout << "\njoin_mat: \n" << join_mat;
+
+    Eigen::TensorMap<Eigen::Tensor<float, 3>> tt(join_mat.data(), SIZE,4,SIZE);
+    
+    Eigen::array<int, 1> dims({1}); //dimensions to reduce
+
+    Eigen::Tensor<float, 2> b = tt.maximum(dims);
+    // std::cout << "\nmax values: \n" << b;
+
+}
+
+
+void tensor_func_no_stride (int SIZE, Eigen::MatrixXf stor_mat) {
+    Eigen::TensorMap<Eigen::Tensor<float, 3>> tt(stor_mat.data(), SIZE,4,SIZE);
+    Eigen::array<int, 1> dims({1}); //dimensions to reduce
+
+    Eigen::Tensor<float, 2> b = tt.maximum(dims); 
 }
 
 
@@ -216,6 +261,20 @@ void timer_perm (Eigen::MatrixXf dists, int SIZE, Eigen::VectorXi row_order) {
     	blocker2(dists, SIZE, perm);
     }
 }
+
+/** 
+    just map a lot and see how expensive it gets
+
+*/
+
+void map_tester (Eigen::MatrixXf stor_mat, int nbr_map){
+
+    for (int i=0; i < nbr_map; i++){
+	
+	Eigen::Map<Eigen::MatrixXf> stride1 (stor_mat.data(), stor_mat.rows()/2 ,stor_mat.cols()*2);
+    }
+}
+    
 
 void timer_perm_basic (Eigen::MatrixXf dists, int SIZE, Eigen::VectorXi row_order) {
     // get perm
@@ -238,6 +297,25 @@ void timer_block (int SIZE, Eigen::MatrixXf dists) {
 }
     
 
+void timer_tensor (int SIZE, Eigen::MatrixXf dists) {
+    for (int i=0; i<250; i++){
+	tensor_func2(SIZE, dists);
+    }
+}
+
+void timer_tensor_no_stride (int SIZE, Eigen::MatrixXf dists) {
+    for (int i=0; i<250; i++){
+	tensor_func_no_stride(SIZE, dists);
+    }
+}
+
+
+void timer_map_tester (Eigen::MatrixXf dists, int nbr_map) {
+    for (int i = 0; i<250; i++){
+	map_tester(dists, nbr_map);
+    }
+}
+
 PYBIND11_MODULE(eigen_block_test, m) {
     m.doc() = "block test";
     m.def("blocker1", &blocker1, "asdf");
@@ -247,5 +325,8 @@ PYBIND11_MODULE(eigen_block_test, m) {
     m.def("timer_perm", &timer_perm, "asdf");
     m.def("timer_perm_basic", &timer_perm_basic, "asdf");
     m.def("timer_block", &timer_block, "asdf");
+    m.def("timer_tensor", &timer_tensor, "asdf");
+    m.def("timer_tensor_no_stride", &timer_tensor_no_stride, "asdf");
+    m.def("timer_map_tester", &timer_map_tester, "asf");
 }
 

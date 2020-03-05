@@ -66,7 +66,6 @@ Eigen::MatrixXf so_dists() {
     // e13 = e11 + e12;
 
     e2 = p1.colwise().sum();
-
     
 
     // std::cout << e1;
@@ -74,7 +73,7 @@ Eigen::MatrixXf so_dists() {
     std::cout << e12 << std::endl;
     // std::cout << e13;
     std::cout << e2 << std::endl;
-	
+
     
     // D = ((p0.transpose() * p1).colwise() + p0.colwise().sum().transpose()).rowwise() + p1.colwise().sum();
 
@@ -140,16 +139,22 @@ Eigen::MatrixXf test_dist_repl(int SIZE) {
 }
 
 Eigen::MatrixXf test_dist_repl2(int SIZE) {
-    // replicate could be a thing, would mean i have to replicate vector once row-vise, once column wise
-    // hm that works, not bad
 
+    // rowwise/colwise are basically the things to which the following methods attach
+    // maybe broadcast on replicated vector?
+    // minimize transposing by replicating transposed vector row-wise and then subtracing col-vector colwise
+    
     Eigen::VectorXf j = Eigen::VectorXf::Random(SIZE);
     Eigen::MatrixXf mat(SIZE, SIZE);
+
+    
     // mat = j.replicate(1,SIZE) - j.transpose().replicate(SIZE,1);
     mat = j.transpose().replicate(SIZE,1).colwise() - j;
     
     return mat;
 }
+
+
 
     
 
