@@ -329,4 +329,3 @@ PYBIND11_MODULE(eigen_block_test, m) {
     m.def("timer_tensor_no_stride", &timer_tensor_no_stride, "asdf");
     m.def("timer_map_tester", &timer_map_tester, "asf");
 }
-

@@ -53,8 +53,8 @@ Eigen::MatrixXf so_dists() {
     Eigen::MatrixXf e13(p0.cols(), p0.rows());
     Eigen::MatrixXf e2(p0.cols(), p0.rows());
 
-    // D = ( (p0.transpose() * p1 * -2 ).colwise() + p0.colwise().squaredNorm().transpose()
-    // 	).rowwise() + p1.colwise().squaredNorm();
+    D = ( (p0.transpose() * p1 * -2 ).colwise() + p0.colwise().squaredNorm().transpose()
+	).rowwise() + p1.colwise().squaredNorm();
 
     // e1 = ((p0.transpose() * p1 * -2 ).colwise() + p0.colwise().squaredNorm().transpose());
     // .rowwise();
