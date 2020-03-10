@@ -31,6 +31,8 @@ void blocker1 (int SIZE, Eigen::MatrixXf mat) {
 	    // res_mat(k,i) = cell;
 	}
     }
+
+    
     // std::cout << mat.block<2,2>(0,0);
 
     
@@ -206,6 +208,32 @@ void perm_basic (Eigen::MatrixXf mat, int SIZE, Eigen::PermutationMatrix<Eigen::
 }
 
 
+void perm_basic_fixed (Eigen::MatrixXf mat, int SIZE, Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm) {
+    
+    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, 2>> mat_rszd(mat.data(), SIZE*SIZE*2, 2);
+
+    Eigen::Matrix<float, Eigen::Dynamic,2> res_mat (SIZE*SIZE*2,2);
+
+    // std::cout << mat_rszd.rows();
+    // std::cout << perm.toDenseMatrix().eval().rows();
+    // std::cout << perm.cols();
+
+    // auto res_mat = perm * mat_rszd;
+    res_mat << perm * mat_rszd;
+    
+    
+    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, 4>> res_rord(res_mat.data(), SIZE*SIZE, 4);
+    
+    // Eigen::Map<Eigen::MatrixXf> res_rord(mat.data(), SIZE*SIZE, 4); // for skipping permutation
+
+
+    Eigen::VectorXf max_vec(SIZE*SIZE);
+    max_vec = res_rord.rowwise().maxCoeff();
+
+    // Eigen::Map<Eigen::MatrixXf> max_mat(max_vec.data(), SIZE, SIZE);
+	
+}
+
 
 
 void tensor_func2 (int SIZE, Eigen::MatrixXf stor_mat) {
@@ -232,6 +260,7 @@ void tensor_func2 (int SIZE, Eigen::MatrixXf stor_mat) {
     // std::cout << "\njoin_mat: \n" << join_mat;
 
     Eigen::TensorMap<Eigen::Tensor<float, 3>> tt(join_mat.data(), SIZE,4,SIZE);
+    // Eigen::TensorMap<Eigen::TensorFixedSize<float, Eigen::Sizes<Eigen::Dynamic, 4, Eigen::Dynamic>>> tt(join_mat.data(), SIZE,4,SIZE);
     
     Eigen::array<int, 1> dims({1}); //dimensions to reduce
 
@@ -242,10 +271,77 @@ void tensor_func2 (int SIZE, Eigen::MatrixXf stor_mat) {
 
 
 void tensor_func_no_stride (int SIZE, Eigen::MatrixXf stor_mat) {
-    Eigen::TensorMap<Eigen::Tensor<float, 3>> tt(stor_mat.data(), SIZE,4,SIZE);
+    // Eigen::TensorMap<Eigen::Tensor<float, 3>> tt(stor_mat.data(), SIZE,4,SIZE);
+    // Eigen::TensorMap<Eigen::TensorFixedSize<float, Eigen::Sizes<Eigen::Dynamic, 4, Eigen::Dynamic>>> tt(stor_mat.data(), SIZE,4,SIZE);
+
+
+    // Eigen::TensorMap<Eigen::TensorFixedSize<float, Eigen::Sizes<Eigen::Dynamic, 4, Eigen::Dynamic>>> test_tensor(stor_mat.data(), SIZE, 4, SIZE);
+
+    // Eigen::TensorMap<Eigen::TensorFixedSize<float, Eigen::Sizes<2, 4, 2>>> test_tensor(stor_mat.data(), SIZE, 4, SIZE);
+
+  Eigen::TensorFixedSize<float, Eigen::Sizes<Eigen::Dynamic, 4, Eigen::Dynamic>>test_tensor;
+
+
+
+  // std::cout << "\nstor_mat: \n" << stor_mat;
+
+    // for (int i = 0; i < 2*SIZE; i=i+2) {
+    // 	for (int j1 = 0; j1 < 2; j1++) {
+    // 	    for (int k=0; k<2*SIZE; k=k+2) {
+    // 		for (int j2 = 0; j2 < 2; j2++) {
+
+    // 		    // test_tensor(i,j1 + j2,k) =
+    // 		    std::cout << "\nrow it, col it: " << k + j2 << " " << i + j1;
+    // 		    std::cout << "\nvalue: " << stor_mat(k + j2,i + j1);
+    // 		    // std::cout << "\nk: " << k << " j1: " << j1 << " j2: " << j2 << " i: " << i;
+    // 		    // std::cout << "\ntensor pos: " << k/2 << k+j2 << i/2;
+    // 		    std::cout << "\ntensor pos: " << j2 << k+j2 << i/2;
+    // 		}
+    // 	    }
+    // 	}
+    // }
+
+    // just fill with garbage instead
+  int c = 0;
+  
+    for (int i = 0; i<SIZE; i++) {
+	for (int j = 0; j< 4; j++) {
+	    for (int k = 0; k<SIZE; k++) {
+		std::cout << "\n" << c;
+		test_tensor(i,j,k) = c;
+		c++;
+		
+	    }
+	}
+    }
+    
+
+
+    // for (int i=0, i<2*SIZE, i++) {
+    // 	for (int k = 0, k < 2 * SIZE, k++) {
+    // 	    stor_mat(i, k)
+    //   }
+    // }
+    // hmm don't think that'll work because it needs division or modulo operations
+    // 
+
+    std::cout << "\nrank: \n" << test_tensor.rank();
+    std::cout << "\nsome value: \n" << test_tensor(1,1,1);
+    
+    // test_tensor.eval();
+
+    // Eigen::TensorFixedSize<float, Eigen::Sizes<Eigen::Dynamic, 4, Eigen::Dynamic>> tt;
+    // tt = Eigen::TensorMap<Eigen::TensorFixedSize<float, Eigen::Sizes<Eigen::Dynamic, 4, Eigen::Dynamic>>>(stor_mat.data(), SIZE, 4, SIZE);
+
+    
+
+    // std::cout << "\ntensor fixed size: \n" << test_tensor;
     Eigen::array<int, 1> dims({1}); //dimensions to reduce
 
-    Eigen::Tensor<float, 2> b = tt.maximum(dims); 
+    Eigen::Tensor<float, 2> b = test_tensor.maximum(dims);
+    std::cout << b;
+
+    // Eigen::TensorFixedSize<int, Sizes
 }
 
 
@@ -290,6 +386,21 @@ void timer_perm_basic (Eigen::MatrixXf dists, int SIZE, Eigen::VectorXi row_orde
 }
 
 
+void timer_perm_basic_fixed (Eigen::MatrixXf dists, int SIZE, Eigen::VectorXi row_order) {
+    // get perm
+    
+    Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> perm;
+    perm = create_perm(row_order);
+    // std::cout << perm.toDenseMatrix();
+
+    // run with same perm matrix multiple times
+    for (int i=0; i<250; i++){
+    	perm_basic_fixed(dists, SIZE, perm);
+    }
+}
+
+
+
 void timer_block (int SIZE, Eigen::MatrixXf dists) {
     for (int i=0; i<250; i++){
 	blocker1(SIZE, dists);
@@ -324,8 +435,10 @@ PYBIND11_MODULE(eigen_block_test, m) {
     // m.def("create_perm", &create_perm, "asdf");
     m.def("timer_perm", &timer_perm, "asdf");
     m.def("timer_perm_basic", &timer_perm_basic, "asdf");
+    m.def("timer_perm_basic_fixed", &timer_perm_basic_fixed, "asdf");
     m.def("timer_block", &timer_block, "asdf");
     m.def("timer_tensor", &timer_tensor, "asdf");
     m.def("timer_tensor_no_stride", &timer_tensor_no_stride, "asdf");
     m.def("timer_map_tester", &timer_map_tester, "asf");
 }
+
