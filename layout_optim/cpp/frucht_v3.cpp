@@ -4,6 +4,9 @@
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
+#include <chrono>
+
+
 
 // something to get indices of matrix where condition is fulfilled
 // https://stackoverflow.com/questions/50027494/eigen-indices-of-dense-matrix-meeting-condition
@@ -184,8 +187,6 @@ float get_min_corner_dist(Eigen::Ref<Eigen::Matrix<float, 4, 2>> p0,
     // 	     ).colwise() + pts_pos.rowwise().squaredNorm()
     // 	).rowwise() + pts_pos.rowwise().squaredNorm().transpose();
 
-
-
     Eigen::Matrix<float,4,4> D;
     D = ( (p0 * p1.transpose() * -2
 	      ).colwise() + p0.rowwise().squaredNorm()
@@ -198,7 +199,7 @@ float get_min_corner_dist(Eigen::Ref<Eigen::Matrix<float, 4, 2>> p0,
     // D = ((pts_pos * pts_pos.transpose() *  -2
     // 	     ).colwise() + pts_pos.rowwise().squaredNorm()
     // 	).rowwise() + pts_pos.rowwise().squaredNorm().transpose();
-    std::cout << "\ndists:\n" << D;
+    // std::cout << "\ndists:\n" << D;
 
     return std::sqrt(D.minCoeff());
 
@@ -267,8 +268,8 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
     }
     
     std::cout << "\nmap array length: " << corner_map.size();
-    
 
+    auto start = chrono::steady_clock::now();
 
     for (auto p : indices) {
 	std::cout << "\n(" << p.first << ',' << p.second << ") ";
@@ -279,27 +280,35 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
 	float p1_bottom = pos_nds(p.first,1) - dim_ar(p.first,1),p1_top = pos_nds(p.first,1) + dim_ar(p.first,1);
 	float p2_bottom = pos_nds(p.second,1) - dim_ar(p.second,1),p2_top = pos_nds(p.second,1) + dim_ar(p.second,1);
 
-        std::vector<float> xdists { p2_left - p1_left, p2_left - p1_right,  p2_right - p1_left,  p2_right - p1_right};
-	std::vector<float> ydists { p2_bottom - p1_bottom, p2_bottom - p1_top,  p2_top - p1_bottom,  p2_top - p1_top};
-        
-	auto minmax_x = std::minmax_element(xdists.begin(), xdists.end());
-	auto minmax_y = std::minmax_element(ydists.begin(), ydists.end());
+	Eigen::Vector4f xdists, ydists;
+	xdists << p2_left - p1_left, p2_left - p1_right,  p2_right - p1_left,  p2_right - p1_right;
+	ydists << p2_bottom - p1_bottom, p2_bottom - p1_top,  p2_top - p1_bottom,  p2_top - p1_top;
 
-	float x_ovlp = std::signbit(*minmax_x.first * *minmax_x.second);
-	float y_ovlp = std::signbit(*minmax_y.first * *minmax_y.second);
-	// float mnmx_x_prod = *minmax_x.first * *minmax_x.second;
-	
-	// std::cout << "\nminmax prod: " << mnmx_prod;
 	// signbit: product is negative (signbit =1) if overlap exists
+	float x_ovlp = std::signbit(xdists.minCoeff() * xdists.maxCoeff());
+	float y_ovlp = std::signbit(ydists.minCoeff() * ydists.maxCoeff());
 	
-	// std::cout << "\nsignbit: " << std::signbit(mnmx_prod);
-
-	// hm how to get the corner point distances..
-	// don't have separate corner point array anymore
-	// could write function to construct it, like in python for all
-	// then distances (similar to self-distances)
-	// maybe get unique points before and calculate corner points for them -> no recalculation if same node is necessary multiple times 
-	    
+	float x_shrt = xdists.array().abs().minCoeff();
+	float y_shrt = ydists.array().abs().minCoeff();
+	
+	// get min corner_point_distances
+	float min_corner_dist;
+	min_corner_dist = get_min_corner_dist(corner_map[p.first], corner_map[p.second]);
+	std::cout << "\nmin corner dist: " << min_corner_dist;
+	std::cout << "\nold dist: " << dists_nd(p.first, p.second);
+	
+	float both_ovlp = x_ovlp * y_ovlp;
+	float x_ovlp2 = x_ovlp - both_ovlp;
+	float y_ovlp2 = y_ovlp - both_ovlp;
+	float none_ovlp = 1 - both_ovlp - x_ovlp2 - y_ovlp2;
+	
+	std::cout << "\nx_ovlp2: " << x_ovlp2;
+	std::cout << "\ny_ovlp2: " << y_ovlp2;
+	std::cout << "\nboth_ovlp2: " << both_ovlp;
+	std::cout << "\nnone_ovlp2: " << none_ovlp;
+	
+	float new_dist = (x_ovlp2 * y_shrt) + (y_ovlp2 * x_shrt) + both_ovlp + (none_ovlp * min_corner_dist);
+	std::cout << "\nnew dist: " << new_dist;
     }
 
     // do stuff
