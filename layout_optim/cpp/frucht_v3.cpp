@@ -8,6 +8,7 @@
 
 
 
+
 // something to get indices of matrix where condition is fulfilled
 // https://stackoverflow.com/questions/50027494/eigen-indices-of-dense-matrix-meeting-condition
 template<typename Func>
@@ -104,7 +105,7 @@ std::vector<std::pair<int,int>> max_dim_ext(const Eigen::Ref<const Eigen::Matrix
     Eigen::MatrixXf diff_dists(SIZE,SIZE);
     diff_dists.triangularView<Eigen::Lower>() = dists - 2*max_dim_dists;
 
-    std::cout << "\ndiff_dists: \n" << diff_dists;
+    // std::cout << "\ndiff_dists: \n" << diff_dists;
 
     int th = 0;
 
@@ -216,63 +217,37 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
 		  const Eigen::Ref<const Eigen::MatrixXf> dim_ar,
 		  const Eigen::Ref<const Eigen::MatrixXf> pos_nds) {
 
-
-    //     std::cout << p.first << p.second <<;
-    // hmm how to get new distances most efficiently
     
-    // still need to check all possibilities i guess
-    // can't just take lowest: would mean that overlap in one dimension means total overlap
-      
-    // maybe vectorization? process all distance pairs at once?
-    // array (element-wise) multiplication should work
-    // index slicing not available yet tho (in dev branch) -> single case loop for now
-    // x dists
-    
-    // std::vector<int> some_inds{0,1};
+    // std::cout << "\npos_nds:\n" << pos_nds;
 
-    // std::cout << "\nall pos:\n" << pos_nds;
-    // std::cout << "\nsome pos:\n" << pos_nds(some_inds,0);
-
-
-    std::cout << "\npos_nds:\n" << pos_nds;
-    
-
-    // std::cout << "\np1_left: " << p1_left;
-    // std::cout << "\np1_right: " << p1_right;
-    // std::cout << "\np2_left: " << p2_left;
-    // std::cout << "\np2_right: " << p2_right;
-    
-    // for (auto k : xdists) {
-    // 	std::cout << "\nsomevalue: " << k;
-    // };
-
-	
-    // std::cout << "minimum element: " << *minmax.first << '\n';
-    // std::cout << "maximum element: " << *minmax.second << '\n';
-
-    
-    // get unique indices
+    // get unique indices and put them to map
     std::vector<int> unique_indices;
     unique_indices = getElements(indices);
-    for (auto i : unique_indices) {
-	std::cout << "\nunique indices: " << i;
-    }
+    // for (auto i : unique_indices) {
+    // 	std::cout << "\nunique indices: " << i;
+    // }
 
     std::map<int,Eigen::Matrix<float,4,2>> corner_map;
 
     for (auto i : unique_indices) {
 	Eigen::Matrix<float,4,2> corner_mat;
 	corner_mat = get_corner_points(pos_nds(i, 0), pos_nds(i, 1),dim_ar(i, 0), dim_ar(i, 1));
-	std::cout << "\ncorner points:\n" << corner_mat;
+	// std::cout << "\ncorner points:\n" << corner_mat;
 	corner_map[i] = corner_mat;
     }
     
-    std::cout << "\nmap array length: " << corner_map.size();
+    // std::cout << "\nmap array length: " << corner_map.size();
 
-    auto start = chrono::steady_clock::now();
-
+    // timer
+    auto start = std::chrono::steady_clock::now();
+    
+    // openmp: would only result in improvement for bigger graphs (100s of nodes)
+    // #pragma omp parallel for
+    // for (int itr=0; itr < indices.size(); itr++) {
+    // auto p = indices[itr];
+    
     for (auto p : indices) {
-	std::cout << "\n(" << p.first << ',' << p.second << ") ";
+	// std::cout << "\n(" << p.first << ',' << p.second << ") ";
 	// get node extremes in x
 	float p1_left = pos_nds(p.first,0) - dim_ar(p.first,0),p1_right = pos_nds(p.first,0) + dim_ar(p.first,0);
 	float p2_left = pos_nds(p.second,0) - dim_ar(p.second,0),p2_right = pos_nds(p.second,0) + dim_ar(p.second,0);
@@ -294,22 +269,28 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
 	// get min corner_point_distances
 	float min_corner_dist;
 	min_corner_dist = get_min_corner_dist(corner_map[p.first], corner_map[p.second]);
-	std::cout << "\nmin corner dist: " << min_corner_dist;
-	std::cout << "\nold dist: " << dists_nd(p.first, p.second);
+	// std::cout << "\nmin corner dist: " << min_corner_dist;
+	// std::cout << "\nold dist: " << dists_nd(p.first, p.second);
 	
 	float both_ovlp = x_ovlp * y_ovlp;
 	float x_ovlp2 = x_ovlp - both_ovlp;
 	float y_ovlp2 = y_ovlp - both_ovlp;
 	float none_ovlp = 1 - both_ovlp - x_ovlp2 - y_ovlp2;
 	
-	std::cout << "\nx_ovlp2: " << x_ovlp2;
-	std::cout << "\ny_ovlp2: " << y_ovlp2;
-	std::cout << "\nboth_ovlp2: " << both_ovlp;
-	std::cout << "\nnone_ovlp2: " << none_ovlp;
+	// std::cout << "\nx_ovlp2: " << x_ovlp2;
+	// std::cout << "\ny_ovlp2: " << y_ovlp2;
+	// std::cout << "\nboth_ovlp2: " << both_ovlp;
+	// std::cout << "\nnone_ovlp2: " << none_ovlp;
 	
 	float new_dist = (x_ovlp2 * y_shrt) + (y_ovlp2 * x_shrt) + both_ovlp + (none_ovlp * min_corner_dist);
-	std::cout << "\nnew dist: " << new_dist;
+	// std::cout << "\nnew dist: " << new_dist;
     }
+
+    auto end = std::chrono::steady_clock::now();
+    
+    std::cout << "Elapsed time in microseconds : " 
+	      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+	      << " µs" << std::endl;
 
     // do stuff
 }
