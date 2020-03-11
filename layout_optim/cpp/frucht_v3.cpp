@@ -39,7 +39,8 @@ Eigen::MatrixXf dists1d(const Eigen::Ref<const Eigen::VectorXf> v) {
 
     Eigen::MatrixXf mat(SIZE, SIZE);
     mat = v.transpose().replicate(SIZE, 1).colwise() - v;
-    return mat;
+    // return mat.transpose();
+    return (-1*mat.array());
 }
 
 /** 
@@ -99,13 +100,17 @@ std::vector<std::pair<int,int>> max_dim_ext(const Eigen::Ref<const Eigen::Matrix
     max_dim_dists = max_dim.transpose().replicate(SIZE, 1).colwise() + max_dim;
 
     max_dim_dists.diagonal().setZero();
+    // max_dim_dists.diagonal() = Eigen::VectorXf::Constant(SIZE,1);
+    
     // std::cout << "\nmax_dim_dists:\n" << max_dim_dists;
 
     // subtract dims
     Eigen::MatrixXf diff_dists(SIZE,SIZE);
     diff_dists.triangularView<Eigen::Lower>() = dists - 2*max_dim_dists;
+    diff_dists.triangularView<Eigen::Upper>() = Eigen::MatrixXf::Constant(SIZE, SIZE,1);
 
-    // std::cout << "\ndiff_dists: \n" << diff_dists;
+    std::cout << "\ndiff_dists: \n" << diff_dists;
+    
 
     int th = 0;
 
@@ -132,11 +137,10 @@ std::vector<std::pair<int,int>> max_dim_ext(const Eigen::Ref<const Eigen::Matrix
     // 	ctr++;
     // std::cout << "\nctr: " << ctr;
         
-	
-    // for(auto p:indices)
-    //     std::cout << '(' << p.first << ',' << p.second << ") ";
-    // std::cout << '\
-	n';
+    std::cout << "\nindices:";
+    for(auto p:indices)
+        std::cout << '(' << p.first << ',' << p.second << ") ";
+    std::cout << '\n';
 
     return indices;
 }
@@ -283,12 +287,15 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
 	// std::cout << "\nnone_ovlp2: " << none_ovlp;
 	
 	float new_dist = (x_ovlp2 * y_shrt) + (y_ovlp2 * x_shrt) + both_ovlp + (none_ovlp * min_corner_dist);
+	dists_nd(p.first, p.second) = new_dist;
+	dists_nd(p.second, p.first) = new_dist;
+	
 	// std::cout << "\nnew dist: " << new_dist;
     }
 
     auto end = std::chrono::steady_clock::now();
     
-    std::cout << "Elapsed time in microseconds : " 
+    std::cout << "\nElapsed time in microseconds : " 
 	      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
 	      << " µs" << std::endl;
 
@@ -298,36 +305,96 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
 /**
    entire function
    pos_nd: node position
-   pos_cr: corner positions: not clear if i actually need it much: only use it in some cases where i use only some elements
+   don't need no corner matrix
+   k: something about ideal distance
+   A: connectivity matrix
+   width and height
+   t: temperature 
    
-   
+ */
 
-
-Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf pos_cr, Eigen::MatrixXf dim_ar) {
+void frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, Eigen::MatrixXf A,
+	    float width, float height, float t) {
     // setup objects
     int NBR_NDS = pos_nd.rows();
+    
 
     // setup objects done
+   
+    int ctr = 0;
+    int node_border_phase = 1;
+
+
+    // std::cout << "\nconstant vector test:\n"  << Eigen::VectorXf::Constant(10,1);
     
-    while (true) {
-	// delta calculations
-	Eigen::MatrixXf dists_nd = dists(pos_nd);
+    std::cout << "\nnode positions:\n" << pos_nd;
 
-        if (point_phase == 1) {
-	    // point phase calculations
-	    // actually not really anything: should calculate dists before
-        }
-
-        if (node_border_phase == 1){
-	    std::veactor<std::pair<int,int>> indices;
-	    indices = max_dim_ext(dists_nd, dim_ar, NBR_NDS);
-
-	    
-	    
+    // while (true) {}
     
-    }
+    // delta calculations
+    Eigen::MatrixXf delta_x, delta_y;
+    delta_x = dists1d(pos_nd.col(0));
+    std::cout << "\ndelta_x:\n" << delta_x;
+    
+    delta_y = dists1d(pos_nd.col(1));
+    std::cout << "\ndelta_y:\n" << delta_y;
+
+    Eigen::MatrixXf dists_nd = dists(pos_nd);
+
+    std::vector<std::pair<int,int>> indices;
+    indices = max_dim_ext(dists_nd, dim_ar, NBR_NDS);
+    
+    std::cout << "\nold dists:\n" << dists_nd;
+    dists_nd.diagonal() = Eigen::VectorXf::Constant(NBR_NDS,1);
+    
+    // point phase does not need explicit calling: just means center distances are not modified
+    // if (node_border_phase == 1) {}
+    // don't update dists for now
+    // update_dists(indices, dists_nd, (0.5*dim_ar.array()).matrix(), pos_nd);
+    // std::cout << "\nnew dists:\n" << dists_nd;
+
+    // calculate force array
+    // (k * k / distance**2) - A * distance / k
+    Eigen::ArrayXXf force_ar(NBR_NDS, NBR_NDS);
+    force_ar = (k*k / (dists_nd.array()).pow(2)) - ((A.array() * dists_nd.array())/k) ;
+    std::cout << "\nforce array:\n" << force_ar;
+
+    // // displacement x
+    Eigen::Matrix<float,Eigen::Dynamic, 2> disp (NBR_NDS, 2);
+    // std::cout << "\nsome disp:\n" << (delta_x.array() * force_ar.array()).rowwise().sum();
+    disp.col(0) = (delta_x.array() * force_ar.array()).rowwise().sum();
+    disp.col(1) = (delta_y.array() * force_ar.array()).rowwise().sum();
+    std::cout << "\ndisplacement:\n" << disp;
+    
+    // repellant window borders
+    disp.col(0) = disp.col(0).array() + k*10*k*10/((pos_nd.col(0) - dim_ar.col(0)/2).array()).pow(2);
+    disp.col(0) = disp.col(0).array() - k*10*k*10/(width - ((pos_nd.col(0) + dim_ar.col(0)/2).array())).pow(2);
+    disp.col(1) = disp.col(1).array() + k*10*k*10/((pos_nd.col(1) - dim_ar.col(1)/2).array()).pow(2);
+    disp.col(1) = disp.col(1).array() - k*10*k*10/(height - ((pos_nd.col(1) + dim_ar.col(1)/2).array())).pow(2);
+
+    std::cout << "\ndisp repellant borders:\n" << disp;
+    
+    // no gravity for now
+
+    // delta calcs
+    // standardize displacement vectors? (i guess)
+    Eigen::VectorXf len_vec(NBR_NDS);
+    len_vec = (disp.rowwise().norm()).cwiseMax(0.1);
+    std::cout << "\nlen_vec:\n" << len_vec;
+    Eigen::ArrayX2f len_ar(NBR_NDS,2);
+    len_ar = (t/len_vec.array()).replicate(1,2);
+
+    Eigen::Matrix<float, Eigen::Dynamic, 2> delta_pos (NBR_NDS, 2);
+    delta_pos = disp.array() * len_ar;
+    std::cout << "\ndelta_pos:\n" << delta_pos;
+
+    // update logic
+
+    pos_nd += delta_pos;
+    
+      
 }
- */
+
 
 
 PYBIND11_MODULE(frucht_v3, m) {
@@ -337,4 +404,5 @@ PYBIND11_MODULE(frucht_v3, m) {
   m.def("update_dists", &update_dists, "asdf");
   m.def("get_corner_points", &get_corner_points, "asdf");
   m.def("get_min_corner_dist", &get_min_corner_dist, "asdf");
+  m.def("frucht", &frucht, "asdf");
 }
