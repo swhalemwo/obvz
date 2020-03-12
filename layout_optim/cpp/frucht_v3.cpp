@@ -80,36 +80,29 @@ Eigen::MatrixXf dists(const Eigen::Ref<const Eigen::MatrixXf> pts_pos){
     check which distances need their borders checked
     takes:
     - distance matrix
-    - node dimension array
+    - max dimension distance ?? 
     - nbr nodes (size) to avoid having to calculate it again
  */
 
 std::vector<std::pair<int,int>> max_dim_ext(const Eigen::Ref<const Eigen::MatrixXf> dists,
-					    const Eigen::Ref<const Eigen::MatrixXf> dim_ar,
+					    const Eigen::Ref<const Eigen::MatrixXf> max_dim_dists,
 					    const int SIZE) {
-    Eigen::VectorXf max_dim(SIZE);
-    
-    max_dim = dim_ar.rowwise().maxCoeff();
 
     // std::cout << "\nmax_dim: " << max_dim;
 
-    Eigen::MatrixXf max_dim_dists(SIZE, SIZE);
+
 
     // std::cout << "\ntransposed: \n" << max_dim.transpose();
     
-    max_dim_dists = max_dim.transpose().replicate(SIZE, 1).colwise() + max_dim;
-
-    max_dim_dists.diagonal().setZero();
-    // max_dim_dists.diagonal() = Eigen::VectorXf::Constant(SIZE,1);
     
     // std::cout << "\nmax_dim_dists:\n" << max_dim_dists;
 
     // subtract dims
     Eigen::MatrixXf diff_dists(SIZE,SIZE);
-    diff_dists.triangularView<Eigen::Lower>() = dists - 2*max_dim_dists;
+    diff_dists.triangularView<Eigen::Lower>() = dists - max_dim_dists;
     diff_dists.triangularView<Eigen::Upper>() = Eigen::MatrixXf::Constant(SIZE, SIZE,1);
 
-    std::cout << "\ndiff_dists: \n" << diff_dists;
+    // std::cout << "\ndiff_dists: \n" << diff_dists;
     
 
     int th = 0;
@@ -123,24 +116,11 @@ std::vector<std::pair<int,int>> max_dim_ext(const Eigen::Ref<const Eigen::Matrix
         });
     
     
-    // std::vector<std::pair<int,int>> indices2;
-    
-    // visit_lambda(diff_dists,
-    //     [&indices2,th](double v, int i, int j) {
-    //         if(th == th)
-    //             indices2.push_back(std::make_pair(1,1));
-    //     });
 
-    // int ctr = 0;
-
-    // for(auto p:indices2)
-    // 	ctr++;
-    // std::cout << "\nctr: " << ctr;
-        
-    std::cout << "\nindices:";
-    for(auto p:indices)
-        std::cout << '(' << p.first << ',' << p.second << ") ";
-    std::cout << '\n';
+    // std::cout << "\nindices:";
+    // for(auto p:indices)
+    //     std::cout << '(' << p.first << ',' << p.second << ") ";
+    // std::cout << '\n';
 
     return indices;
 }
@@ -219,7 +199,8 @@ float get_min_corner_dist(Eigen::Ref<Eigen::Matrix<float, 4, 2>> p0,
 void update_dists(const std::vector<std::pair<int, int>> indices,
                   Eigen::Ref<Eigen::MatrixXf> dists_nd,
 		  const Eigen::Ref<const Eigen::MatrixXf> dim_ar,
-		  const Eigen::Ref<const Eigen::MatrixXf> pos_nds) {
+		  const Eigen::Ref<const Eigen::MatrixXf> pos_nds,
+		  int *both_ovlp_count) {
 
     
     // std::cout << "\npos_nds:\n" << pos_nds;
@@ -243,7 +224,7 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
     // std::cout << "\nmap array length: " << corner_map.size();
 
     // timer
-    auto start = std::chrono::steady_clock::now();
+    // auto start = std::chrono::steady_clock::now();
     
     // openmp: would only result in improvement for bigger graphs (100s of nodes)
     // #pragma omp parallel for
@@ -289,19 +270,24 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
 	float new_dist = (x_ovlp2 * y_shrt) + (y_ovlp2 * x_shrt) + both_ovlp + (none_ovlp * min_corner_dist);
 	dists_nd(p.first, p.second) = new_dist;
 	dists_nd(p.second, p.first) = new_dist;
+
 	
+	// update pointer with overlap counter
+	*both_ovlp_count += both_ovlp;
+	// std::cout << both_ovlp;
 	// std::cout << "\nnew dist: " << new_dist;
     }
-
-    auto end = std::chrono::steady_clock::now();
+        
+    // auto end = std::chrono::steady_clock::now();
     
-    std::cout << "\nElapsed time in microseconds : " 
-	      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-	      << " µs" << std::endl;
+    // std::cout << "\nElapsed time in microseconds : " 
+    // 	      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+    // 	      << " µs" << std::endl;
 
     // do stuff
 }
 
+     
 /**
    entire function
    pos_nd: node position
@@ -310,11 +296,13 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
    A: connectivity matrix
    width and height
    t: temperature 
-   
+   max_itr: max amount of iterations
+   def_itr: minimum number of iterations
+   rep_nd_brd_start: percentage of last section of def_itr when to start making node borders repellent
  */
 
-void frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, Eigen::MatrixXf A,
-	    float width, float height, float t) {
+Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, Eigen::MatrixXf A,
+	    float width, float height, float t, int max_itr, int def_itr, float rep_nd_brd_start) {
     // setup objects
     int NBR_NDS = pos_nd.rows();
     
@@ -322,80 +310,130 @@ void frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, Eigen::Matr
     // setup objects done
    
     int ctr = 0;
-    int node_border_phase = 1;
-
+    float dt = t/def_itr;
+    int both_ovlp_count = 0;
+    float boundaries_crossed = 0;
 
     // std::cout << "\nconstant vector test:\n"  << Eigen::VectorXf::Constant(10,1);
+    // std::cout << "\nnode positions:\n" << pos_nd;
+
+    // generate max dim array (doesn't change):
+    // indicates how far nodes can be apart through their extent
+    // if actual distance is smaller than this, nodes get border calculations
     
-    std::cout << "\nnode positions:\n" << pos_nd;
+    Eigen::VectorXf max_dim(NBR_NDS);
+    max_dim = (dim_ar.rowwise().maxCoeff()).array()*2;
+    Eigen::MatrixXf max_dim_dists(NBR_NDS, NBR_NDS);
+    max_dim_dists = max_dim.transpose().replicate(NBR_NDS, 1).colwise() + max_dim;
+    max_dim_dists.diagonal() = Eigen::VectorXf::Constant(NBR_NDS,1);
 
-    // while (true) {}
     
-    // delta calculations
-    Eigen::MatrixXf delta_x, delta_y;
-    delta_x = dists1d(pos_nd.col(0));
-    std::cout << "\ndelta_x:\n" << delta_x;
+    auto start = std::chrono::steady_clock::now();
+
+    while (true) {
+
+      both_ovlp_count = 0;
+          
+      // delta calculations
+      Eigen::MatrixXf delta_x, delta_y;
+      delta_x = dists1d(pos_nd.col(0));
+      delta_y = dists1d(pos_nd.col(1));
+      // std::cout << "\ndelta_x:\n" << delta_x;
+      // std::cout << "\ndelta_y:\n" << delta_y;
+
+      Eigen::MatrixXf dists_nd = dists(pos_nd);
+
+      std::vector<std::pair<int,int>> indices;
+      indices = max_dim_ext(dists_nd, max_dim_dists, NBR_NDS);
     
-    delta_y = dists1d(pos_nd.col(1));
-    std::cout << "\ndelta_y:\n" << delta_y;
-
-    Eigen::MatrixXf dists_nd = dists(pos_nd);
-
-    std::vector<std::pair<int,int>> indices;
-    indices = max_dim_ext(dists_nd, dim_ar, NBR_NDS);
+      // std::cout << "\nold dists:\n" << dists_nd;
+      dists_nd.diagonal() = Eigen::VectorXf::Constant(NBR_NDS,1);
     
-    std::cout << "\nold dists:\n" << dists_nd;
-    dists_nd.diagonal() = Eigen::VectorXf::Constant(NBR_NDS,1);
+      // point phase does not need explicit calling: just means center distances are not modified
+      if (t < dt * def_itr * rep_nd_brd_start) {
+
+        update_dists(indices, dists_nd, (0.5 * dim_ar.array()).matrix(), pos_nd,
+                     &both_ovlp_count);
+      }
+      // std::cout << "\nnew dists:\n" << dists_nd;
+
+      // calculate force array
+      // (k * k / distance**2) - A * distance / k
+      Eigen::ArrayXXf force_ar(NBR_NDS, NBR_NDS);
+      force_ar = (k*k / (dists_nd.array()).pow(2)) - ((A.array() * dists_nd.array())/k) ;
+      // std::cout << "\nforce array:\n" << force_ar;
+
+      // // displacement x
+      Eigen::Matrix<float,Eigen::Dynamic, 2> disp (NBR_NDS, 2);
+      // std::cout << "\nsome disp:\n" << (delta_x.array() * force_ar.array()).rowwise().sum();
+      disp.col(0) = (delta_x.array() * force_ar.array()).rowwise().sum();
+      disp.col(1) = (delta_y.array() * force_ar.array()).rowwise().sum();
+      // std::cout << "\ndisplacement:\n" << disp;
     
-    // point phase does not need explicit calling: just means center distances are not modified
-    // if (node_border_phase == 1) {}
-    // don't update dists for now
-    // update_dists(indices, dists_nd, (0.5*dim_ar.array()).matrix(), pos_nd);
-    // std::cout << "\nnew dists:\n" << dists_nd;
-
-    // calculate force array
-    // (k * k / distance**2) - A * distance / k
-    Eigen::ArrayXXf force_ar(NBR_NDS, NBR_NDS);
-    force_ar = (k*k / (dists_nd.array()).pow(2)) - ((A.array() * dists_nd.array())/k) ;
-    std::cout << "\nforce array:\n" << force_ar;
-
-    // // displacement x
-    Eigen::Matrix<float,Eigen::Dynamic, 2> disp (NBR_NDS, 2);
-    // std::cout << "\nsome disp:\n" << (delta_x.array() * force_ar.array()).rowwise().sum();
-    disp.col(0) = (delta_x.array() * force_ar.array()).rowwise().sum();
-    disp.col(1) = (delta_y.array() * force_ar.array()).rowwise().sum();
-    std::cout << "\ndisplacement:\n" << disp;
-    
-    // repellant window borders
-    disp.col(0) = disp.col(0).array() + k*10*k*10/((pos_nd.col(0) - dim_ar.col(0)/2).array()).pow(2);
-    disp.col(0) = disp.col(0).array() - k*10*k*10/(width - ((pos_nd.col(0) + dim_ar.col(0)/2).array())).pow(2);
-    disp.col(1) = disp.col(1).array() + k*10*k*10/((pos_nd.col(1) - dim_ar.col(1)/2).array()).pow(2);
-    disp.col(1) = disp.col(1).array() - k*10*k*10/(height - ((pos_nd.col(1) + dim_ar.col(1)/2).array())).pow(2);
-
-    std::cout << "\ndisp repellant borders:\n" << disp;
-    
-    // no gravity for now
-
-    // delta calcs
-    // standardize displacement vectors? (i guess)
-    Eigen::VectorXf len_vec(NBR_NDS);
-    len_vec = (disp.rowwise().norm()).cwiseMax(0.1);
-    std::cout << "\nlen_vec:\n" << len_vec;
-    Eigen::ArrayX2f len_ar(NBR_NDS,2);
-    len_ar = (t/len_vec.array()).replicate(1,2);
-
-    Eigen::Matrix<float, Eigen::Dynamic, 2> delta_pos (NBR_NDS, 2);
-    delta_pos = disp.array() * len_ar;
-    std::cout << "\ndelta_pos:\n" << delta_pos;
-
-    // update logic
-
-    pos_nd += delta_pos;
-    
+      // repellant window borders
+      disp.col(0) = disp.col(0).array() + k*10*k*10/((pos_nd.col(0) - dim_ar.col(0)/2).array()).pow(2);
+      disp.col(0) = disp.col(0).array() - k*10*k*10/(width - ((pos_nd.col(0) + dim_ar.col(0)/2).array())).pow(2);
+      disp.col(1) = disp.col(1).array() + k*10*k*10/((pos_nd.col(1) - dim_ar.col(1)/2).array()).pow(2);
+      disp.col(1) = disp.col(1).array() - (k*10*k*10/((height - ((pos_nd.col(1) + dim_ar.col(1)/2).array())).pow(2)));
       
+
+      // std::cout << "\ndisp repellant borders:\n" << disp;
+    
+      // no gravity for now
+
+      // delta calcs
+      // standardize displacement vectors? (i guess)
+      Eigen::VectorXf len_vec(NBR_NDS);
+      len_vec = (disp.rowwise().norm()).cwiseMax(0.1);
+      // std::cout << "\nlen_vec:\n" << len_vec;
+      Eigen::ArrayX2f len_ar(NBR_NDS,2);
+      len_ar = (t/len_vec.array()).replicate(1,2);
+
+      Eigen::Matrix<float, Eigen::Dynamic, 2> delta_pos (NBR_NDS, 2);
+      delta_pos = disp.array() * len_ar;
+      // std::cout << "\ndelta_pos:\n" << delta_pos;
+
+      // update logic
+      pos_nd += delta_pos;
+
+      
+      
+      // check boundary crossings
+
+      boundaries_crossed = 0;
+      if (pos_nd.col(0).minCoeff() < 0 or pos_nd.col(0).maxCoeff() > width or
+	  pos_nd.col(1).minCoeff() < 0 or pos_nd.col(1).maxCoeff() > height) {
+	boundaries_crossed = 1;
+      }
+      
+      // std::cout << "\nctr: " << ctr << "; t: " << t << "; both_ovlp_count: " << both_ovlp_count;
+
+    
+      ctr ++;
+      if (ctr == max_itr or t < 0) {break;}
+    
+      // reduce temperature in first phase (no node borders)
+      if (t > (dt * def_itr * rep_nd_brd_start)) {
+        t -= dt;
+      }
+
+      // reduce in second phase if no ovlp and no boundary crossing
+      else {
+        if (both_ovlp_count == 0 and boundaries_crossed == 0) {
+          t -= dt;
+        }
+      }
+    }
+
+    auto end = std::chrono::steady_clock::now();
+    
+    // std::cout << "\nElapsed time in microseconds : " 
+    // 	      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+    // 	      << " µs" << std::endl;
+
+    // std::cout << "\nnode pos:\n" << pos_nd;
+    return pos_nd;
 }
-
-
 
 PYBIND11_MODULE(frucht_v3, m) {
   m.doc() = "aasdf";
