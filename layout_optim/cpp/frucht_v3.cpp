@@ -32,7 +32,7 @@ void visit_lambda(const Mat& m, const Func& f)
 /**
    calculate 1d deltas
    can probably be used to construct deltas overall
- */
+*/
 
 Eigen::MatrixXf dists1d(const Eigen::Ref<const Eigen::VectorXf> v) {
     int SIZE = v.rows();
@@ -45,7 +45,7 @@ Eigen::MatrixXf dists1d(const Eigen::Ref<const Eigen::VectorXf> v) {
 
 /** 
     calculate pairwise distance matrix
- */
+*/
 
 Eigen::MatrixXf dists(const Eigen::Ref<const Eigen::MatrixXf> pts_pos){
     // D = ( (p0.transpose() * p1 * -2
@@ -56,14 +56,14 @@ Eigen::MatrixXf dists(const Eigen::Ref<const Eigen::MatrixXf> pts_pos){
     Eigen::MatrixXf D(pts_pos.rows(),pts_pos.rows());
     /** some long comment 
 
-    std::cout << "\ncoords: \n" << pts_pos;
-    std::cout << "\ntransposed: " << pts_pos.transpose();
-    Eigen::VectorXf vec_par1;
-    vec_par1 = pts_pos.rowwise().squaredNorm().transpose();
-    std::cout << "\nsome vector part: " << vec_par1;
+	std::cout << "\ncoords: \n" << pts_pos;
+	std::cout << "\ntransposed: " << pts_pos.transpose();
+	Eigen::VectorXf vec_par1;
+	vec_par1 = pts_pos.rowwise().squaredNorm().transpose();
+	std::cout << "\nsome vector part: " << vec_par1;
 
-    some modified stuff that seems to work
-    https://stackoverflow.com/questions/19280782/pairwise-differences-between-two-matrices-in-eigen
+	some modified stuff that seems to work
+	https://stackoverflow.com/questions/19280782/pairwise-differences-between-two-matrices-in-eigen
     */
     
 
@@ -73,7 +73,10 @@ Eigen::MatrixXf dists(const Eigen::Ref<const Eigen::MatrixXf> pts_pos){
 
     // std::cout << "\ndist mat in c: \n" << D.array().sqrt();
     // return D.array().sqrt();
-    return D.cwiseSqrt();
+
+    // std::cout << "\nmin D: " << D.minCoeff();
+    
+    return D.cwiseAbs().cwiseSqrt();
 }
 
 /** 
@@ -82,20 +85,11 @@ Eigen::MatrixXf dists(const Eigen::Ref<const Eigen::MatrixXf> pts_pos){
     - distance matrix
     - max dimension distance ?? 
     - nbr nodes (size) to avoid having to calculate it again
- */
+*/
 
 std::vector<std::pair<int,int>> max_dim_ext(const Eigen::Ref<const Eigen::MatrixXf> dists,
 					    const Eigen::Ref<const Eigen::MatrixXf> max_dim_dists,
 					    const int SIZE) {
-
-    // std::cout << "\nmax_dim: " << max_dim;
-
-
-
-    // std::cout << "\ntransposed: \n" << max_dim.transpose();
-    
-    
-    // std::cout << "\nmax_dim_dists:\n" << max_dim_dists;
 
     // subtract dims
     Eigen::MatrixXf diff_dists(SIZE,SIZE);
@@ -103,17 +97,19 @@ std::vector<std::pair<int,int>> max_dim_ext(const Eigen::Ref<const Eigen::Matrix
     diff_dists.triangularView<Eigen::Upper>() = Eigen::MatrixXf::Constant(SIZE, SIZE,1);
 
     // std::cout << "\ndiff_dists: \n" << diff_dists;
-    
 
-    int th = 0;
+    // int th = 0;
 
     std::vector<std::pair<int,int>> indices;
 
     visit_lambda(diff_dists,
-        [&indices,th](double v, int i, int j) {
-            if(v < th)
-                indices.push_back(std::make_pair(i,j));
-        });
+		 // [&indices,th](double v, int i, int j) {
+		 // if(v < th)
+		 [&indices](double v, int i, int j) {
+		     if(std::signbit(v))
+			 indices.push_back(std::make_pair(i,j));
+		 });
+
     
     
 
@@ -158,12 +154,12 @@ Eigen::Matrix<float,4,2> get_corner_points(float x, float y,
     corner_mat(3, 0) = x - width;
     corner_mat(3, 1) = y - height;
   
-  return corner_mat;
+    return corner_mat;
 }
 
 /** 
     calculate the 4x4 point distances (previously blocks)
- */
+*/
 
 float get_min_corner_dist(Eigen::Ref<Eigen::Matrix<float, 4, 2>> p0,
 			  Eigen::Ref<Eigen::Matrix<float, 4, 2>> p1) {
@@ -173,9 +169,9 @@ float get_min_corner_dist(Eigen::Ref<Eigen::Matrix<float, 4, 2>> p0,
     // 	).rowwise() + pts_pos.rowwise().squaredNorm().transpose();
 
     Eigen::Matrix<float,4,4> D;
-    D = ( (p0 * p1.transpose() * -2
-	      ).colwise() + p0.rowwise().squaredNorm()
-	).rowwise() + p1.rowwise().squaredNorm().transpose();
+    D = ( (p1 * p0.transpose() * -2
+	      ).colwise() + p1.rowwise().squaredNorm()
+	).rowwise() + p0.rowwise().squaredNorm().transpose();
 
     // D = ( (p1 * p0.transpose() * -2
     //       ).colwise() + p0.colwise().squaredNorm().transpose()
@@ -186,7 +182,14 @@ float get_min_corner_dist(Eigen::Ref<Eigen::Matrix<float, 4, 2>> p0,
     // 	).rowwise() + pts_pos.rowwise().squaredNorm().transpose();
     // std::cout << "\ndists:\n" << D;
 
-    return std::sqrt(D.minCoeff());
+    // debug: 
+    // if (isnan(std::sqrt(D.minCoeff()))) {
+    // 	std::cout << "\nD:\n" << D;
+    // 	std::cout << "\np0:\n" << p0;
+    // 	std::cout << "\np1:\n" << p1;
+    // }
+
+    return std::sqrt((D.cwiseAbs()).minCoeff());
 
     // asdf
 }
@@ -194,7 +197,7 @@ float get_min_corner_dist(Eigen::Ref<Eigen::Matrix<float, 4, 2>> p0,
 /** 
     updates the dist where the nodes are close together
 
- */
+*/
 
 void update_dists(const std::vector<std::pair<int, int>> indices,
                   Eigen::Ref<Eigen::MatrixXf> dists_nd,
@@ -266,9 +269,18 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
 	// std::cout << "\ny_ovlp2: " << y_ovlp2;
 	// std::cout << "\nboth_ovlp2: " << both_ovlp;
 	// std::cout << "\nnone_ovlp2: " << none_ovlp;
-	
+
+
 	float new_dist = (x_ovlp2 * y_shrt) + (y_ovlp2 * x_shrt) + both_ovlp + (none_ovlp * min_corner_dist);
-	dists_nd(p.first, p.second) = new_dist;
+        if (isnan(new_dist)) {
+	    std::cout << "\nNEW DIST IS NAN\n";
+	    std::cout << "\nx_ovlp2, y_shrt: " << x_ovlp2 << " " << y_shrt;
+	    std::cout << "\ny_ovlp2, x_hsrt: " << y_ovlp2 << " " << x_shrt;
+	    std::cout << "\nboth ovlp: " << both_ovlp;
+	    std::cout << "\nnone_ovlp, min_corner_dist: " << none_ovlp << " " << min_corner_dist;
+	    new_dist = 1;
+        }
+        dists_nd(p.first, p.second) = new_dist;
 	dists_nd(p.second, p.first) = new_dist;
 
 	
@@ -299,10 +311,10 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
    max_itr: max amount of iterations
    def_itr: minimum number of iterations
    rep_nd_brd_start: percentage of last section of def_itr when to start making node borders repellent
- */
+*/
 
 Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, Eigen::MatrixXf A,
-	    float width, float height, float t, int max_itr, int def_itr, float rep_nd_brd_start) {
+		       float width, float height, float t, int max_itr, int def_itr, float rep_nd_brd_start) {
     // setup objects
     int NBR_NDS = pos_nd.rows();
     
@@ -329,100 +341,167 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
 
     
     auto start = std::chrono::steady_clock::now();
+    std::vector<std::pair<int,int>> nan_indices;
 
     while (true) {
 
-      both_ovlp_count = 0;
+	both_ovlp_count = 0;
+
+	// visit_lambda(pos_nd,
+	// 	     [&nan_indices](double v, int i, int j) {
+	// 		 if(isnan(v))
+	// 		     nan_indices.push_back(std::make_pair(i,j));
+	// 	     });
+	// if (nan_indices.size() > 0) {
+	//     std::cout << "\nnode pos array:\n" << pos_nd;
+	//     break;
+	// }
+
           
-      // delta calculations
-      Eigen::MatrixXf delta_x, delta_y;
-      delta_x = dists1d(pos_nd.col(0));
-      delta_y = dists1d(pos_nd.col(1));
-      // std::cout << "\ndelta_x:\n" << delta_x;
-      // std::cout << "\ndelta_y:\n" << delta_y;
+	// delta calculations
+	Eigen::MatrixXf delta_x, delta_y;
+	delta_x = dists1d(pos_nd.col(0));
+	delta_y = dists1d(pos_nd.col(1));
+	// std::cout << "\ndelta_x:\n" << delta_x;
+	// std::cout << "\ndelta_y:\n" << delta_y;
 
-      Eigen::MatrixXf dists_nd = dists(pos_nd);
+	Eigen::MatrixXf dists_nd = dists(pos_nd);
 
-      std::vector<std::pair<int,int>> indices;
-      indices = max_dim_ext(dists_nd, max_dim_dists, NBR_NDS);
+
+	// visit_lambda(dists_nd,
+	// 	     [&nan_indices](double v, int i, int j) {
+	// 		 if(isnan(v))
+	// 		     nan_indices.push_back(std::make_pair(i,j));
+	// 	     });
+	// if (nan_indices.size() > 0) {
+	//     std::cout << "\nnode dist array:\n" << dists_nd;
+	//     break;
+	// }
+
+	std::vector<std::pair<int,int>> indices;
+	indices = max_dim_ext(dists_nd, max_dim_dists, NBR_NDS);
     
-      // std::cout << "\nold dists:\n" << dists_nd;
-      dists_nd.diagonal() = Eigen::VectorXf::Constant(NBR_NDS,1);
+	// std::cout << "\nold dists:\n" << dists_nd;
+	dists_nd.diagonal() = Eigen::VectorXf::Constant(NBR_NDS,1);
     
-      // point phase does not need explicit calling: just means center distances are not modified
-      if (t < dt * def_itr * rep_nd_brd_start) {
+	// point phase does not need explicit calling: just means center distances are not modified
+	if (t < dt * def_itr * rep_nd_brd_start) {
 
-        update_dists(indices, dists_nd, (0.5 * dim_ar.array()).matrix(), pos_nd,
-                     &both_ovlp_count);
-      }
-      // std::cout << "\nnew dists:\n" << dists_nd;
+	    update_dists(indices, dists_nd, (0.5 * dim_ar.array()).matrix(), pos_nd,
+			 &both_ovlp_count);
+	}
+	
 
-      // calculate force array
-      // (k * k / distance**2) - A * distance / k
-      Eigen::ArrayXXf force_ar(NBR_NDS, NBR_NDS);
-      force_ar = (k*k / (dists_nd.array()).pow(2)) - ((A.array() * dists_nd.array())/k) ;
-      // std::cout << "\nforce array:\n" << force_ar;
+	// calculate force array
+	// (k * k / distance**2) - A * distance / k
+	Eigen::ArrayXXf force_ar(NBR_NDS, NBR_NDS);
+	force_ar = (k*k / (dists_nd.array()).pow(2)) - ((A.array() * dists_nd.array())/k) ;
+	
+	// visit_lambda(force_ar,
+	// 		   [&nan_indices](double v, int i, int j) {
+	// 		     if(isnan(v))
+	// 		       nan_indices.push_back(std::make_pair(i,j));
+	// 		   });
+	// if (nan_indices.size() > 0) {
+	// 	std::cout << "\ndists_nd:\n:" << dists_nd;
+	// 	std::cout << "\nforce array:\n" << force_ar;
+	// 	std::cout << "\nindices:\n";
+	//   for (auto p : indices) {
+	//     std::cout << "(" << p.first << ", " << p.second << ")";
+	//   }
+	//   std::cout << "\npos_nd:\n" << pos_nd;
+	// 	break;
+	// }
 
-      // // displacement x
-      Eigen::Matrix<float,Eigen::Dynamic, 2> disp (NBR_NDS, 2);
-      // std::cout << "\nsome disp:\n" << (delta_x.array() * force_ar.array()).rowwise().sum();
-      disp.col(0) = (delta_x.array() * force_ar.array()).rowwise().sum();
-      disp.col(1) = (delta_y.array() * force_ar.array()).rowwise().sum();
-      // std::cout << "\ndisplacement:\n" << disp;
+	// // displacement x
+	Eigen::Matrix<float,Eigen::Dynamic, 2> disp (NBR_NDS, 2);
+	// std::cout << "\nsome disp:\n" << (delta_x.array() * force_ar.array()).rowwise().sum();
+	disp.col(0) = (delta_x.array() * force_ar.array()).rowwise().sum();
+	disp.col(1) = (delta_y.array() * force_ar.array()).rowwise().sum();
+	// std::cout << "\ndisplacement:\n" << disp;
     
-      // repellant window borders
-      disp.col(0) = disp.col(0).array() + k*10*k*10/((pos_nd.col(0) - dim_ar.col(0)/2).array()).pow(2);
-      disp.col(0) = disp.col(0).array() - k*10*k*10/(width - ((pos_nd.col(0) + dim_ar.col(0)/2).array())).pow(2);
-      disp.col(1) = disp.col(1).array() + k*10*k*10/((pos_nd.col(1) - dim_ar.col(1)/2).array()).pow(2);
-      disp.col(1) = disp.col(1).array() - (k*10*k*10/((height - ((pos_nd.col(1) + dim_ar.col(1)/2).array())).pow(2)));
+	// repellant window borders
+	disp.col(0) = disp.col(0).array() + k*10*k*10/((pos_nd.col(0) - dim_ar.col(0)/2).array()).pow(2);
+	disp.col(0) = disp.col(0).array() - k*10*k*10/(width - ((pos_nd.col(0) + dim_ar.col(0)/2).array())).pow(2);
+	disp.col(1) = disp.col(1).array() + k*10*k*10/((pos_nd.col(1) - dim_ar.col(1)/2).array()).pow(2);
+	disp.col(1) = disp.col(1).array() - k*10*k*10/(height - ((pos_nd.col(1) + dim_ar.col(1)/2).array())).pow(2);
+
+	// disp = disp.cwiseMax(-1000000);
+	// disp = disp.cwiseMin(1000000);
+
+	// myarray = myarray.unaryExpr([](double v) { return std::isfinite(v)? v : 0.0; });
+	// https://stackoverflow.com/questions/22927323/how-do-i-find-and-replace-all-non-finite-numbers-in-an-eigenarray-object
+	disp = (disp.array().unaryExpr([](float v) { return std::isfinite(v)? v : 0; })).matrix();
+
+	// std::cout << "\ndisp repellant borders:\n" << disp;
+    
+	// no gravity for now
+
+	// delta calcs
+	// standardize displacement vectors? (i guess)
+	Eigen::VectorXf len_vec(NBR_NDS);
+	len_vec = (disp.rowwise().norm()).cwiseMax(0.1);
+	
       
+	Eigen::ArrayX2f len_ar(NBR_NDS,2);
+	len_ar = (t/len_vec.array()).replicate(1,2);
 
-      // std::cout << "\ndisp repellant borders:\n" << disp;
-    
-      // no gravity for now
+	Eigen::Matrix<float, Eigen::Dynamic, 2> delta_pos (NBR_NDS, 2);
+	delta_pos = disp.array() * len_ar;
 
-      // delta calcs
-      // standardize displacement vectors? (i guess)
-      Eigen::VectorXf len_vec(NBR_NDS);
-      len_vec = (disp.rowwise().norm()).cwiseMax(0.1);
-      // std::cout << "\nlen_vec:\n" << len_vec;
-      Eigen::ArrayX2f len_ar(NBR_NDS,2);
-      len_ar = (t/len_vec.array()).replicate(1,2);
+	// std::cout << "\ndelta_pos:\n" << delta_pos;
 
-      Eigen::Matrix<float, Eigen::Dynamic, 2> delta_pos (NBR_NDS, 2);
-      delta_pos = disp.array() * len_ar;
-      // std::cout << "\ndelta_pos:\n" << delta_pos;
+	// visit_lambda(delta_pos,
+	// 	     [&nan_indices](double v, int i, int j) {
+	// 		 if(isnan(v))
+	// 		     nan_indices.push_back(std::make_pair(i,j));
+	// 	     });
 
-      // update logic
-      pos_nd += delta_pos;
+      
+	// if (nan_indices.size() > 0) {
+	//     std::cout << "\nctr: " << ctr;
+	//     std::cout << "\nmin len: " << len_vec.minCoeff();
+	//     std::cout << "\nlen_vec:\n" << len_vec;
+	//     std::cout << "\ndisp:\n" << disp;
+	//     std::cout << "\nlen_ar:\n" << len_ar;
+	//     std::cout << "\ndelta pos:\n" << delta_pos;
+
+	//     pos_nd(0,0) = 0/0;
+	//     pos_nd(0,1) = std::sqrt(-2);
+	//     std::cout << "\npos nodes:\n" << pos_nd;
+	//     break;
+	// }
+
+	// update logic
+	pos_nd += delta_pos;
 
       
       
-      // check boundary crossings
+	// check boundary crossings
 
-      boundaries_crossed = 0;
-      if (pos_nd.col(0).minCoeff() < 0 or pos_nd.col(0).maxCoeff() > width or
-	  pos_nd.col(1).minCoeff() < 0 or pos_nd.col(1).maxCoeff() > height) {
-	boundaries_crossed = 1;
-      }
+	boundaries_crossed = 0;
+	if (pos_nd.col(0).minCoeff() < 0 or pos_nd.col(0).maxCoeff() > width or
+	    pos_nd.col(1).minCoeff() < 0 or pos_nd.col(1).maxCoeff() > height) {
+	    boundaries_crossed = 1;
+	}
       
-      // std::cout << "\nctr: " << ctr << "; t: " << t << "; both_ovlp_count: " << both_ovlp_count;
+	// std::cout << "\nctr: " << ctr << "; t: " << t << "; both_ovlp_count: " << both_ovlp_count;
 
     
-      ctr ++;
-      if (ctr == max_itr or t < 0) {break;}
+	ctr ++;
+	if (ctr == max_itr or t < 0) {break;}
     
-      // reduce temperature in first phase (no node borders)
-      if (t > (dt * def_itr * rep_nd_brd_start)) {
-        t -= dt;
-      }
+	// reduce temperature in first phase (no node borders)
+	if (t > (dt * def_itr * rep_nd_brd_start)) {
+	    t -= dt;
+	}
 
-      // reduce in second phase if no ovlp and no boundary crossing
-      else {
-        if (both_ovlp_count == 0 and boundaries_crossed == 0) {
-          t -= dt;
-        }
-      }
+	// reduce in second phase if no ovlp and no boundary crossing
+	else {
+	    if (both_ovlp_count == 0 and boundaries_crossed == 0) {
+		t -= dt;
+	    }
+	}
     }
 
     auto end = std::chrono::steady_clock::now();
@@ -436,11 +515,11 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
 }
 
 PYBIND11_MODULE(frucht_v3, m) {
-  m.doc() = "aasdf";
-  m.def("dists", &dists, "asdf");
-  m.def("max_dim_ext", &max_dim_ext, "asdf");
-  m.def("update_dists", &update_dists, "asdf");
-  m.def("get_corner_points", &get_corner_points, "asdf");
-  m.def("get_min_corner_dist", &get_min_corner_dist, "asdf");
-  m.def("frucht", &frucht, "asdf");
+    m.doc() = "aasdf";
+    m.def("dists", &dists, "asdf");
+    m.def("max_dim_ext", &max_dim_ext, "asdf");
+    m.def("update_dists", &update_dists, "asdf");
+    m.def("get_corner_points", &get_corner_points, "asdf");
+    m.def("get_min_corner_dist", &get_min_corner_dist, "asdf");
+    m.def("frucht", &frucht, "asdf");
 }
