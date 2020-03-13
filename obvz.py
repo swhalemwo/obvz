@@ -37,6 +37,8 @@ from graphviz import Digraph
 
 
 from ovlp_func_v2 import pythran_itrtr_cbn
+from frucht_v3 import frucht
+
 
 
 app = QApplication(sys.argv)
@@ -664,13 +666,15 @@ class obvz_window(QtWidgets.QWidget):
         grav_multiplier = 5.0
 
 
-        pythran_res = pythran_itrtr_cbn(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
-                                self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
+        # pythran_res = pythran_itrtr_cbn(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
+        #                         self.rep_nd_brd_start, self.k, self.height*1.0, self.width*1.0, grav_multiplier)
 
-        
+        # pos_nds = pythran_res[0]
+        # ctr = pythran_res[2]
 
-        pos_nds = pythran_res[0]
-        ctr = pythran_res[2]
+        pos_nds = frucht(pos_nds, dim_ar2, self.k*1.0, A, self.width*1.0, self.height*1.0, self.t,
+                         500, self.def_itr, self.rep_nd_brd_start)
+        ctr = 0
 
         t2 = time()
         logging.info('calculated layout in ' + str(round(t2-t1,4)) + ' seconds with ' + str(ctr) + ' iterations')
