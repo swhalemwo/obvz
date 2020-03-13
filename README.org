@@ -103,7 +103,7 @@ obvz is intended primarily as a digital sketch board rather than a sophisticated
 - node properties visualization
 - more node shapes
 - more layout algorithms (plantUML?, mermaid?)
-- ~~rewrite force-directed layout algorithm in C/C++~~
+- +rewrite force-directed layout algorithm in C/C+++
 - fixate/manually position nodes
 - re-integrate with EAF
 - minimize edges crossing nodes: repellent edges? 
