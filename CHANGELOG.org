@@ -1,0 +1,4 @@
+* CHANGELOG
+
+** <2020-03-13 vr>
+layout algorithm rewritten in c++ with Eigen, python integration with pybind
