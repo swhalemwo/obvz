@@ -170,7 +170,7 @@ def pythran_itrtr_cbn(pos,pos_nds, A,row_order, dim_ar, t,def_itr,rep_nd_brd_sta
         
 
         # --------------- delta calcs
-
+        # what is happening here
         length = np.sqrt(np.sum(displacement**2, axis = -1))
         length = np.where(length < 0.01, 0.1, length)
 
