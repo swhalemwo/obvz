@@ -75,9 +75,40 @@ dim_ar = np.array([(g.nodes[i]['width'], g.nodes[i]['height']) for i in g.nodes]
 dim_ar = dim_ar.astype(np.float32)
 
 
-
-
 A = nx.to_numpy_array(g)
 At = A.T
 A = A + At
 np.clip(A, 0, 1, out = A)
+
+# actual force calcs
+
+c = 0
+for c in range(len(elbl_pos_list)):
+    lbl_pos = pos_nds[c]
+    p0 = pos_nds[elbl_cnct_nds[c][0]]
+    p1 = pos_nds[elbl_cnct_nds[c][1]]
+
+    v0 = p0 - lbl_pos
+    v1 = p1 - lbl_pos
+
+    v0 = v0/np.linalg.norm(v0)
+    v1 = v1/np.linalg.norm(v1)
+
+    dot_product = np.dot(v0,v1)
+    angle = np.arccos(dot_product)
+
+    print(angle)
+    disp_vec = v0 + v1
+    disp_vec = disp_vec/np.linalg.norm(disp_vec)
+
+    # function: smaller angle -> greater force
+    # no force if angle is pi
+    force_mult = np.pi - angle
+    # kinda would like to have some division for low angles because it really ups those forces
+    # minus just doesn't cut it
+    # more important than having 0 force (stuff will oscillate out anyways)
+
+    force_mult = 1/angle
+    # maybe have to multiply by constant? 
+    disp_vec *= force_mult
+    
