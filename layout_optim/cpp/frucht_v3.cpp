@@ -5,7 +5,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <chrono>
-
+#include <math.h>
 
 
 
@@ -311,10 +311,16 @@ void update_dists(const std::vector<std::pair<int, int>> indices,
    max_itr: max amount of iterations
    def_itr: minimum number of iterations
    rep_nd_brd_start: percentage of last section of def_itr when to start making node borders repellent
+   
+   elbl_pos_list: which nodes are actually edge labels
+   elbl_cnct_nds: which nodes each edge label node is connected to
+   
 */
 
 Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, Eigen::MatrixXf A,
-		       float width, float height, float t, int max_itr, int def_itr, float rep_nd_brd_start) {
+		       float width, float height, float t, int max_itr, int def_itr, float rep_nd_brd_start,
+		       Eigen::VectorXi elbl_pos_list, Eigen::MatrixXi elbl_cnct_nds, float force_mult
+		       ) {
     // setup objects
     int NBR_NDS = pos_nd.rows();
     
@@ -340,7 +346,7 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
     max_dim_dists.diagonal() = Eigen::VectorXf::Constant(NBR_NDS,1);
 
     
-    auto start = std::chrono::steady_clock::now();
+    // auto start = std::chrono::steady_clock::now();
     std::vector<std::pair<int,int>> nan_indices;
 
     while (true) {
@@ -425,17 +431,58 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
 	disp.col(0) = disp.col(0).array() - k*10*k*10/(width - ((pos_nd.col(0) + dim_ar.col(0)/2).array())).pow(2);
 	disp.col(1) = disp.col(1).array() + k*10*k*10/((pos_nd.col(1) - dim_ar.col(1)/2).array()).pow(2);
 	disp.col(1) = disp.col(1).array() - k*10*k*10/(height - ((pos_nd.col(1) + dim_ar.col(1)/2).array())).pow(2);
-
-	// disp = disp.cwiseMax(-1000000);
-	// disp = disp.cwiseMin(1000000);
-
-	// myarray = myarray.unaryExpr([](double v) { return std::isfinite(v)? v : 0.0; });
 	// https://stackoverflow.com/questions/22927323/how-do-i-find-and-replace-all-non-finite-numbers-in-an-eigenarray-object
 	disp = (disp.array().unaryExpr([](float v) { return std::isfinite(v)? v : 0; })).matrix();
 
-	// std::cout << "\ndisp repellant borders:\n" << disp;
-    
-	// no gravity for now
+	// add hinge forces for edge label nodes
+
+        for (int i = 0; i < elbl_pos_list.size(); i++) {
+	    Eigen::Vector2f lbl_pos, p0,p1, v0, v1, disp_vec;
+	    // std::cout << "\ni: " << i;
+	    
+	    lbl_pos = pos_nd.row(elbl_pos_list(i));
+	    p0 = pos_nd.row(elbl_cnct_nds(i,0));
+	    p1 = pos_nd.row(elbl_cnct_nds(i,1));
+	    std::cout << "\nlbl_pos: " << lbl_pos;
+
+	    v0 = p0 - lbl_pos;
+	    v1 = p1 - lbl_pos;
+	    // std::cout << "\nv0: " << v0 << "\n";
+	    // std::cout << "\nv1: " << v1 << "\n";
+
+	    	
+	    v0 /= v0.norm();
+	    v1 /= v1.norm();
+	    std::cout << "\nv0 standardized: " << v0;
+	    std::cout << "\nv1 standardized: " << v1;
+	    
+	    float dot_prod = v0.dot(v1);
+	    float angle =  acos(dot_prod);
+	    // float force_mult = 1/angle;
+	    std::cout << "\nangle: " << angle;
+	    // std::cout << "\nforce_mult: " << force_mult;
+
+	    disp_vec = v0 + v1;
+	    disp_vec = disp_vec /= disp_vec.norm();
+	    std::cout << "\ndisp vec: " << disp_vec;
+
+	    // maybe use existing disp vector as force multiplier?
+	    // could use magnitude of current displacement
+
+	    float cur_mag = disp.row(elbl_pos_list(i)).norm();
+	    std::cout << "\ncur_mag: " << cur_mag;
+	    		
+	    
+	    disp_vec = (disp_vec.array()) * cur_mag * force_mult; // multiply force vec
+	    std::cout << "\ncurrent disp:" << disp.row(elbl_pos_list(i));
+	    std::cout << "\ndisp vec: " << disp_vec;
+	    
+	    disp.row(elbl_pos_list(i)) += disp_vec; // update
+	    
+
+        }
+
+        // no gravity for now
 
 	// delta calcs
 	// standardize displacement vectors? (i guess)
@@ -504,7 +551,7 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
 	}
     }
 
-    auto end = std::chrono::steady_clock::now();
+    // auto end = std::chrono::steady_clock::now();
     
     // std::cout << "\nElapsed time in microseconds : " 
     // 	      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()

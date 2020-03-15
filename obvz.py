@@ -192,9 +192,6 @@ def rect_points(r):
 
 
 
-
-
-
 class obvz_window(QtWidgets.QWidget):
     def __init__(self, con_type, layout_type):
         super().__init__()
@@ -248,6 +245,7 @@ class obvz_window(QtWidgets.QWidget):
         self.vd = {}
         self.vdr = {}
         self.node_texts_proc = {}
+        self.elbl_texts = {}
         
         self.qt_coords = np.array([])
         self.dim_ar = np.array([])
@@ -408,11 +406,18 @@ class obvz_window(QtWidgets.QWidget):
         - links (indidcated by [[)"""
 
         for i in self.g.nodes():
-            node_text_lines = [k for k in node_texts[i].split('\n') if len(k) > 0]
+            # ugly hack for now to get edge label nodes working
+            try: 
+                node_text_lines = [k for k in node_texts[i].split('\n') if len(k) > 0]
+            except:
+                node_text_lines = ""
+                
             node_text_lines2 = [k for k  in node_text_lines if "[[" not in k]
             logging.info(['node', i])
             logging.info(['node text lines: ', node_text_lines2])
-            
+
+                
+
             self.node_texts_proc[i] = node_text_lines2
 
 
@@ -491,8 +496,15 @@ class obvz_window(QtWidgets.QWidget):
         # "del": in old, not in new
 
         # new_links = new_link_str.split(";")
+        new_tpls = []
         if new_links is not None:
-            new_tpls = [(i.split(" -- ")[0], i.split(" -- ")[1]) for i in new_links]
+            # new_tpls = [(i.split(" -- ")[0], i.split(" -- ")[1]) for i in new_links]
+            for i in new_links:
+                tpl = i.split(" -- ")
+                new_tpls.append((tpl[0], "lbl_" + tpl[2]))
+                new_tpls.append(("lbl_" + tpl[2], tpl[1]))
+                
+                self.elbl_texts[tpl[2]] = tpl[2]
         else:
             new_tpls = set()
 
@@ -672,8 +684,31 @@ class obvz_window(QtWidgets.QWidget):
         # pos_nds = pythran_res[0]
         # ctr = pythran_res[2]
 
+        
+                
+        elbl_pos_list = []
+        elbl_cnct_nds = []
+        c = 0
+        for v in self.g.nodes:
+            if len(v) > 4:
+                if v[0:4] == 'lbl_':
+                    # g.nodes[v]['e_lbl'] = 1
+                    print("v: ", v, ", c: ", c)
+                    elbl_pos_list.append(c)
+                    cnct_nodes = list(self.g.predecessors(v)) + list(self.g.successors(v))
+                    print("connected nodes: ", cnct_nodes)
+                    elbl_cnct_nds.append([self.vd[cnct_nodes[0]], self.vd[cnct_nodes[1]]])
+            c +=1
+            
+        elbl_pos_list = np.array(elbl_pos_list)
+        elbl_cnct_nds = np.array(elbl_cnct_nds)
+        print(elbl_pos_list)
+        print(elbl_cnct_nds)
+
         pos_nds = frucht(pos_nds, dim_ar2, self.k*1.0, A, self.width*1.0, self.height*1.0, self.t,
-                         500, self.def_itr, self.rep_nd_brd_start)
+                         500, self.def_itr, self.rep_nd_brd_start,
+                         elbl_pos_list, elbl_cnct_nds, 1.0
+                         )
         ctr = 0
 
         t2 = time()
