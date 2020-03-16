@@ -232,7 +232,8 @@ class obvz_window(QtWidgets.QWidget):
         # needs to be as command line parameter? think so, how else would it know how to start
         # also needs function to change it
         self.layout_type = layout_type
-        
+        self.use_edge_labels = True
+
         # graph information
         self.adj = [] # adjacency list
         self.node_names = []
@@ -327,7 +328,7 @@ class obvz_window(QtWidgets.QWidget):
         update_me = 0
         links_changed = 0
         nodes_changed = 0
-
+        update_texts = 0
 
         if "draw_arrow_toggle" in new_graph_dict.keys():
             self.draw_arrow_toggle = new_graph_dict['draw_arrow_toggle']
@@ -339,7 +340,8 @@ class obvz_window(QtWidgets.QWidget):
                 self.layout_type = new_graph_dict['layout_type']
                 update_me = 1
         
-        
+                    
+
         # only command is to redraw
         if list(new_graph_dict.keys())[0] == 'redraw':
             self.redraw_layout(new_graph_dict['redraw'])
@@ -352,7 +354,14 @@ class obvz_window(QtWidgets.QWidget):
         # links and node texts as separate things
         if len(list(new_graph_dict.keys())) > 1:
             self.cur_node = new_graph_dict['cur_node']
-            
+
+            # toggling edge labels
+            if self.use_edge_labels != new_graph_dict['use_edge_labels']:
+                self.use_edge_labels = new_graph_dict['use_edge_labels']
+                links_changed = 1
+                update_texts = 1
+                logging.info('time to update edge labels')
+                
             if new_graph_dict['links'] == None:
                 self.reset()
 
@@ -380,11 +389,10 @@ class obvz_window(QtWidgets.QWidget):
             if self.node_texts_raw != new_graph_dict['node_texts'] and new_graph_dict['node_texts'] != None:
                 logging.info('node texts have changed')
                 logging.info(self.g.nodes())
+                update_texts = 1
                 
+            if update_texts == 1:
                 self.proc_node_texts(new_graph_dict['node_texts'])
-                
-                # self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])
-                # self.set_node_wd_ht(list(self.g.nodes()), self.node_texts_proc)
                 self.set_node_wd_ht(list(self.g.nodes()))
                 
                 self.node_texts_raw = new_graph_dict['node_texts']
@@ -516,17 +524,19 @@ class obvz_window(QtWidgets.QWidget):
             # new_tpls = [(i.split(" -- ")[0], i.split(" -- ")[1]) for i in new_links]
             for i in new_links:
                 tpl = i.split(" -- ")
-
-                elbl_nd_name = "lbl_" + tpl[0] + "_" + tpl[1] + "_" + tpl[2]
-                new_tpls.append((tpl[0], elbl_nd_name))
-                new_tpls.append((elbl_nd_name, tpl[1]))
+                # build graph depending on whether edge labels are used or not
                 
-                elbl_title_dict[elbl_nd_name] = tpl[2]
-                
+                if self.use_edge_labels == True: 
 
-                self.elbl_texts[tpl[2]] = tpl[2]
-
-                
+                    elbl_nd_name = "lbl_" + tpl[0] + "_" + tpl[1] + "_" + tpl[2]
+                    new_tpls.append((tpl[0], elbl_nd_name))
+                    new_tpls.append((elbl_nd_name, tpl[1]))
+                    
+                    elbl_title_dict[elbl_nd_name] = tpl[2]
+                    self.elbl_texts[tpl[2]] = tpl[2]
+                    
+                else:
+                    new_tpls.append((tpl[0], tpl[1]))
         else:
             new_tpls = set()
 
@@ -681,9 +691,11 @@ class obvz_window(QtWidgets.QWidget):
         # get corner points pos
         
         sqs = []
-        for i in self.g.nodes():
-            sqx = rect_points([self.g.nodes[i]['x'], self.g.nodes[i]['y'], 
-                                    self.g.nodes[i]['width'], self.g.nodes[i]['height']])
+        for n in self.g.nodes():
+            logging.info(['node', n])
+            sqx = rect_points([self.g.nodes[n]['x'], self.g.nodes[n]['y'], 
+                                    self.g.nodes[n]['width'], self.g.nodes[n]['height']])
+            
             sqs.append(sqx)
 
         pos = np.concatenate(sqs)

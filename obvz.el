@@ -305,6 +305,7 @@
 		("node_texts" . ,node-text-alist)
 		("draw_arrow_toggle" . ,obvz-draw-arrow)
 		("layout_type" . ,obvz-layout-type)
+		("use_edge_labels" . ,obvz-use-edge-labels)
 		)
 	      )
 	graph-dict
@@ -326,7 +327,17 @@
     )
 
 
+(defun obvz-toggle-edge-labels ()
+    "toggle node labels on/off"
+    (interactive)
+    (if (equal obvz-use-edge-labels t)
+	    (setq obvz-use-edge-labels nil)
+	(setq obvz-use-edge-labels t))
+    (obvz-update-graph-hard))
 
+    
+    
+       
 
 (defun obvz-reposition-nodes()
     "redraw layout, either soft (apply forces to current layout) or hard (from random starting positions)"
@@ -433,12 +444,14 @@
 (setq obvz-highlight-current-node t)
 (setq obvz-layout-type "force")
 
+(setq obvz-use-edge-labels t) 
 
 
 
 (define-key org-brain-visualize-mode-map "N" 'obvz-switch-node-text-inclusion)
 (define-key org-brain-visualize-mode-map "R" 'obvz-reposition-nodes)
 (define-key org-brain-visualize-mode-map "U" 'obvz-update-graph-hard)
+(define-key org-brain-visualize-mode-map "E" 'obvz-toggle-edge-labels)
 
 ;; ========== set these before loading the functions ==============
 ;; (setq obvz-python-version "python3")
