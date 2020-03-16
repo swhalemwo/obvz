@@ -409,10 +409,10 @@ class obvz_window(QtWidgets.QWidget):
 
         for n in self.g.nodes():
             # ugly hack for now to get edge label nodes working
-            try: 
-                node_text_lines = [k for k in node_texts[i].split('\n') if len(k) > 0]
-            except:
-                node_text_lines = ""
+            if self.g.nodes[n]['nd_tp'] == 'nd':
+                node_text_lines = [k for k in node_texts[n].split('\n') if len(k) > 0]
+            else:
+                node_text_lines = []
                 
             node_text_lines2 = [k for k  in node_text_lines if "[[" not in k]
             logging.info(['node', n])
@@ -733,11 +733,12 @@ class obvz_window(QtWidgets.QWidget):
 
         grav_multiplier = 5.0
 
-
+        logging.info(['pos_nds:\n', pos_nds])
         pos_nds = frucht(pos_nds, dim_ar2, self.k*1.0, A, self.width*1.0, self.height*1.0, self.t,
                          500, self.def_itr, self.rep_nd_brd_start,
                          elbl_pos_list, elbl_cnct_nds, 1.0
                          )
+        logging.info(['pos_nds:\n', pos_nds])
         ctr = 0
 
         t2 = time()
