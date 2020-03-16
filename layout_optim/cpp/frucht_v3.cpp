@@ -443,7 +443,7 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
 	    lbl_pos = pos_nd.row(elbl_pos_list(i));
 	    p0 = pos_nd.row(elbl_cnct_nds(i,0));
 	    p1 = pos_nd.row(elbl_cnct_nds(i,1));
-	    std::cout << "\nlbl_pos: " << lbl_pos;
+	    // std::cout << "\nlbl_pos: " << lbl_pos;
 
 	    v0 = p0 - lbl_pos;
 	    v1 = p1 - lbl_pos;
@@ -453,29 +453,29 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
 	    	
 	    v0 /= v0.norm();
 	    v1 /= v1.norm();
-	    std::cout << "\nv0 standardized: " << v0;
-	    std::cout << "\nv1 standardized: " << v1;
+	    // std::cout << "\nv0 standardized: " << v0;
+	    // std::cout << "\nv1 standardized: " << v1;
 	    
 	    float dot_prod = v0.dot(v1);
 	    float angle =  acos(dot_prod);
 	    // float force_mult = 1/angle;
-	    std::cout << "\nangle: " << angle;
+	    // std::cout << "\nangle: " << angle;
 	    // std::cout << "\nforce_mult: " << force_mult;
 
 	    disp_vec = v0 + v1;
 	    disp_vec = disp_vec /= disp_vec.norm();
-	    std::cout << "\ndisp vec: " << disp_vec;
+	    // std::cout << "\ndisp vec: " << disp_vec;
 
 	    // maybe use existing disp vector as force multiplier?
 	    // could use magnitude of current displacement
 
 	    float cur_mag = disp.row(elbl_pos_list(i)).norm();
-	    std::cout << "\ncur_mag: " << cur_mag;
+	    // std::cout << "\ncur_mag: " << cur_mag;
 	    		
 	    
 	    disp_vec = (disp_vec.array()) * cur_mag * force_mult; // multiply force vec
-	    std::cout << "\ncurrent disp:" << disp.row(elbl_pos_list(i));
-	    std::cout << "\ndisp vec: " << disp_vec;
+	    // std::cout << "\ncurrent disp:" << disp.row(elbl_pos_list(i));
+	    // std::cout << "\ndisp vec: " << disp_vec;
 	    
 	    disp.row(elbl_pos_list(i)) += disp_vec; // update
 	    

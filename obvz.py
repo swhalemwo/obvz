@@ -309,8 +309,9 @@ class obvz_window(QtWidgets.QWidget):
         self.vd = {}
         self.vdr = {}
         self.node_texts_raw = {}
-        self.node_texts_proc = {}
-        
+        # self.node_texts_proc = {}
+        self.elbl_texts = {}
+
         self.qt_coords = np.array([])
         self.dim_ar = np.array([])
 
@@ -383,7 +384,8 @@ class obvz_window(QtWidgets.QWidget):
                 self.proc_node_texts(new_graph_dict['node_texts'])
                 
                 # self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])
-                self.set_node_wd_ht(list(self.g.nodes()), self.node_texts_proc)
+                # self.set_node_wd_ht(list(self.g.nodes()), self.node_texts_proc)
+                self.set_node_wd_ht(list(self.g.nodes()))
                 
                 self.node_texts_raw = new_graph_dict['node_texts']
                 update_me = 1
@@ -405,7 +407,7 @@ class obvz_window(QtWidgets.QWidget):
         - empty lines
         - links (indidcated by [[)"""
 
-        for i in self.g.nodes():
+        for n in self.g.nodes():
             # ugly hack for now to get edge label nodes working
             try: 
                 node_text_lines = [k for k in node_texts[i].split('\n') if len(k) > 0]
@@ -413,12 +415,12 @@ class obvz_window(QtWidgets.QWidget):
                 node_text_lines = ""
                 
             node_text_lines2 = [k for k  in node_text_lines if "[[" not in k]
-            logging.info(['node', i])
+            logging.info(['node', n])
             logging.info(['node text lines: ', node_text_lines2])
 
-                
+            self.g.nodes[n]['node_text'] = node_text_lines2
 
-            self.node_texts_proc[i] = node_text_lines2
+            # self.node_texts_proc[i] = node_text_lines2
 
 
     def get_node_text_dimensions(self, fm_nt, node_text):
@@ -444,7 +446,7 @@ class obvz_window(QtWidgets.QWidget):
         return(widths, heights)
 
 
-    def set_node_wd_ht(self, nodes_to_recalc_dims, node_text_dict):
+    def set_node_wd_ht(self, nodes_to_recalc_dims):
         """set height and width attributes based on text properties"""
         # hm should it be so general that i don't have to run it every time? 
         # question is if i recalculate all node properties if graph changes
@@ -465,20 +467,30 @@ class obvz_window(QtWidgets.QWidget):
         fm_nt = QFontMetrics(font) # font metric node text
 
 
+
         for n in nodes_to_recalc_dims:
-            node_rect = fm.boundingRect(n)
-            nd_title_wd, nd_title_ht = node_rect.width(), node_rect.height()
-            
-            nt_dims = self.get_node_text_dimensions(fm_nt, node_text_dict[n])
-            nt_dims[0].append(nd_title_wd)
-            nt_dims[1].append(nd_title_ht)
+            if self.g.nodes[n]['nd_tp'] == 'nd':
+                node_rect = fm.boundingRect(self.g.nodes[n]['title'])
+                nd_title_wd, nd_title_ht = node_rect.width(), node_rect.height()
+                
+                # get sizes of node body text lines
+                nt_dims = self.get_node_text_dimensions(fm_nt, self.g.nodes[n]['node_text'])
+                nt_dims[0].append(nd_title_wd)
+                nt_dims[1].append(nd_title_ht)
+                
+                # node_sz = (node_rect.width() + self.wd_pad*2, node_rect.height())
+                # self.g.nodes[n]['width'] = node_sz[0]
+                # self.g.nodes[n]['height'] = node_sz[1]
 
-            # node_sz = (node_rect.width() + self.wd_pad*2, node_rect.height())
-            # self.g.nodes[n]['width'] = node_sz[0]
-            # self.g.nodes[n]['height'] = node_sz[1]
+                self.g.nodes[n]['width'] = max(nt_dims[0]) + self.wd_pad*2
+                self.g.nodes[n]['height'] = sum(nt_dims[1])
 
-            self.g.nodes[n]['width'] = max(nt_dims[0]) + self.wd_pad*2
-            self.g.nodes[n]['height'] = sum(nt_dims[1])
+            # if node is an edge label node there's no need to check for node text
+            if self.g.nodes[n]['nd_tp'] == 'lbl':
+                node_rect = fm_nt.boundingRect(self.g.nodes[n]['title'])
+                nd_title_wd, nd_title_ht = node_rect.width(), node_rect.height()
+                self.g.nodes[n]['width'] = nd_title_wd + self.wd_pad*2
+                self.g.nodes[n]['height'] = nd_title_ht
             
         self.dim_ar = np.array([[self.g.nodes[i]['width'], self.g.nodes[i]['height']] for i in self.g.nodes])
 
@@ -496,17 +508,29 @@ class obvz_window(QtWidgets.QWidget):
         # "del": in old, not in new
 
         # new_links = new_link_str.split(";")
+
+        elbl_title_dict = {}
+        
         new_tpls = []
         if new_links is not None:
             # new_tpls = [(i.split(" -- ")[0], i.split(" -- ")[1]) for i in new_links]
             for i in new_links:
                 tpl = i.split(" -- ")
-                new_tpls.append((tpl[0], "lbl_" + tpl[2]))
-                new_tpls.append(("lbl_" + tpl[2], tpl[1]))
+
+                elbl_nd_name = "lbl_" + tpl[0] + "_" + tpl[1] + "_" + tpl[2]
+                new_tpls.append((tpl[0], elbl_nd_name))
+                new_tpls.append((elbl_nd_name, tpl[1]))
                 
+                elbl_title_dict[elbl_nd_name] = tpl[2]
+                
+
                 self.elbl_texts[tpl[2]] = tpl[2]
+
+                
         else:
             new_tpls = set()
+
+        logging.info(elbl_title_dict)
 
         tpls_to_add = list(set(new_tpls) - set(self.tpls))
         tpls_to_del = list(set(self.tpls) - set(new_tpls))
@@ -515,13 +539,7 @@ class obvz_window(QtWidgets.QWidget):
         # old_tpls = self.tpls
         self.tpls = new_tpls
         # self.links = new_links
-        
-        # old_nodes = []
-        # for l in old_tpls:
-        #     old_nodes.append(l[0])
-        #     old_nodes.append(l[1])
 
-        # old_nodes = set(old_nodes)
         old_nodes = self.g.nodes()
 
         # prevent modification of original node object
@@ -556,6 +574,14 @@ class obvz_window(QtWidgets.QWidget):
             logging.info('adding node')
             
             self.g.add_node(n)
+            # have to add title stuff here
+            if n[0:4] == "lbl_":
+                self.g.nodes[n]['title'] = elbl_title_dict[n]
+                self.g.nodes[n]['nd_tp'] = 'lbl'
+            else:
+                self.g.nodes[n]['title'] = n
+                self.g.nodes[n]['nd_tp'] = 'nd'
+                
             self.vd[n] = index_pos
             self.vdr[index_pos] = n
             index_pos +=1
@@ -672,10 +698,6 @@ class obvz_window(QtWidgets.QWidget):
 
         # self.dim_ar = np.array([[self.g.nodes[i]['width'], self.g.nodes[i]['height']] for i in self.g.nodes])
         dim_ar2 = self.dim_ar.astype('float32')
-        t1 = time()
-        ctr = 0
-
-        grav_multiplier = 5.0
 
 
         # pythran_res = pythran_itrtr_cbn(pos, pos_nds, A, row_order, dim_ar2, self.t, self.def_itr,
@@ -685,7 +707,7 @@ class obvz_window(QtWidgets.QWidget):
         # ctr = pythran_res[2]
 
         
-                
+        # construct objects for seeing which nodes are edge label nodes
         elbl_pos_list = []
         elbl_cnct_nds = []
         c = 0
@@ -693,17 +715,24 @@ class obvz_window(QtWidgets.QWidget):
             if len(v) > 4:
                 if v[0:4] == 'lbl_':
                     # g.nodes[v]['e_lbl'] = 1
-                    print("v: ", v, ", c: ", c)
+                    logging.info(["v: ", v, ", c: ", c])
                     elbl_pos_list.append(c)
                     cnct_nodes = list(self.g.predecessors(v)) + list(self.g.successors(v))
-                    print("connected nodes: ", cnct_nodes)
+                    logging.info(["connected nodes: ", cnct_nodes])
                     elbl_cnct_nds.append([self.vd[cnct_nodes[0]], self.vd[cnct_nodes[1]]])
             c +=1
             
         elbl_pos_list = np.array(elbl_pos_list)
         elbl_cnct_nds = np.array(elbl_cnct_nds)
-        print(elbl_pos_list)
-        print(elbl_cnct_nds)
+        
+        logging.info(["elbl_pos_list:\n", elbl_pos_list])
+        logging.info(["elbl_cnct_nds:\n", elbl_cnct_nds])
+
+        t1 = time()
+        ctr = 0
+
+        grav_multiplier = 5.0
+
 
         pos_nds = frucht(pos_nds, dim_ar2, self.k*1.0, A, self.width*1.0, self.height*1.0, self.t,
                          500, self.def_itr, self.rep_nd_brd_start,
@@ -868,23 +897,8 @@ class obvz_window(QtWidgets.QWidget):
         angle = math.atan2((p2x - p1x), (p2y - p1y))
         angle_rev = math.atan2((p1x - p2x), (p1y - p2y))
             
-        # try:
         ar_start_pt_d = get_edge_point_delta(p1_wd, p1_ht, angle)
             
-        # except:
-        #     print('p1x: ', p1x)
-        #     print('p1y: ', p1y)
-        #     print('p2x: ', p2x)
-        #     print('p2y: ', p2y)
-
-        #     print('p1_wd: ', p1_wd)
-        #     print('p1_ht: ', p1_ht)
-        #     print('p2_wd: ', p2_wd)
-        #     print('p2_ht: ', p2_ht)
-            
-        #     print('angle: ', angle)
-        #     ar_start_pt_d = get_edge_point_delta(p1_wd, p1_ht, angle)
-
             
         start_px = p1x + ar_start_pt_d[0]
         start_py = p1y + ar_start_pt_d[1]
@@ -912,7 +926,8 @@ class obvz_window(QtWidgets.QWidget):
         
         qp.drawLine(start_px, start_py, arw_goal_x, arw_goal_y)
         
-        if self.draw_arrow_toggle == True:
+
+        if self.draw_arrow_toggle == True and self.g.nodes[e[4][1]]['nd_tp'] == 'nd':
             qp.drawLine(ar1_x, ar1_y, arw_goal_x, arw_goal_y)
             qp.drawLine(ar2_x, ar2_y, arw_goal_x, arw_goal_y)
 
@@ -935,12 +950,23 @@ class obvz_window(QtWidgets.QWidget):
 
         # draw node titles and text
 
-        for t in zip(self.qt_coords, self.dim_ar, self.node_names): 
-            qp.setFont(QFont('Arial', self.font_size * scl))
-            xpos = t[0][0]-t[1][0]/2+ self.wd_pad
-            ypos = (t[0][1]-t[1][1]/2) + self.title_vflush/1.3333
+        for t in zip(self.qt_coords, self.dim_ar, self.node_names):
 
-            qp.drawText(xpos, ypos, t[2])
+            if self.g.nodes[t[2]]['nd_tp'] == 'nd':
+                qp.setFont(QFont('Arial', self.font_size * scl))
+                ypos = (t[0][1]-t[1][1]/2) + self.title_vflush/1.3333
+
+            if self.g.nodes[t[2]]['nd_tp'] == 'lbl':
+                qp.setFont(QFont('Arial', self.node_text_size * scl))
+
+                # not clear if good solution
+                ypos = (t[0][1]-t[1][1]/2) + self.node_text_vflush*0.75
+                
+            xpos = t[0][0]-t[1][0]/2+ self.wd_pad
+            
+
+            # qp.drawText(xpos, ypos, t[2])
+            qp.drawText(xpos, ypos, self.g.nodes[t[2]]['title'])
             
             qp.setFont(QFont('Arial', self.node_text_size * scl))
             
@@ -948,24 +974,30 @@ class obvz_window(QtWidgets.QWidget):
             # node_text_lines =  [i for i in node_text_lines_raw.split('\n') if len(i) > 0]
             c = 1
             # for t2 in node_text_lines:
-            for t2 in self.node_texts_proc[t[2]]:
+            # for t2 in self.node_texts_proc[t[2]]:
+            
+            for t2 in self.g.nodes[t[2]]['node_text']:
+            
                 qp.drawText(xpos, ypos + self.node_text_vflush*c, t2)
                 c+=1
             
 
         
-        
     def draw_rects(self, qp):
         """draw the rectangles of nodes"""
         qp.setPen(QPen(Qt.black, 2, Qt.SolidLine))
 
+        
+
         for i in zip(self.qt_coords, self.dim_ar, self.node_names):
-            if self.cur_node == i[2]:
-                qp.setPen(QPen(Qt.black, 3, Qt.SolidLine))
-                qp.drawRect(i[0][0]-i[1][0]/2, i[0][1]- i[1][1]/2, i[1][0], i[1][1])
-                qp.setPen(QPen(Qt.black, 2, Qt.SolidLine))
-            else:
-                qp.drawRect(i[0][0]-i[1][0]/2, i[0][1]- i[1][1]/2, i[1][0], i[1][1])
+            if self.g.nodes[i[2]]['nd_tp'] == 'nd':
+                if self.cur_node == i[2]:
+                    qp.setPen(QPen(Qt.black, 3, Qt.SolidLine))
+                    qp.drawRect(i[0][0]-i[1][0]/2, i[0][1]- i[1][1]/2, i[1][0], i[1][1])
+                    qp.setPen(QPen(Qt.black, 2, Qt.SolidLine))
+                else:
+                    qp.drawRect(i[0][0]-i[1][0]/2, i[0][1]- i[1][1]/2, i[1][0], i[1][1])
+
 
         self.width = self.size().width()
         self.height = self.size().height()

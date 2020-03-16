@@ -12,7 +12,7 @@ width = height = 100.0
 
 import networkx as nx
 
-g = nx.Graph()
+g = nx.DiGraph()
 
 edges = [['a', 'b'],
          ['b', 'c'],
@@ -93,7 +93,7 @@ for c in range(len(elbl_pos_list)):
 
     v0 = v0/np.linalg.norm(v0)
     v1 = v1/np.linalg.norm(v1)
-
+    
     dot_product = np.dot(v0,v1)
     angle = np.arccos(dot_product)
 
@@ -112,3 +112,4 @@ for c in range(len(elbl_pos_list)):
     # maybe have to multiply by constant? 
     disp_vec *= force_mult
     
+
