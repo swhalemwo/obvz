@@ -436,6 +436,7 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
 
 	// add hinge forces for edge label nodes
 
+
         for (int i = 0; i < elbl_pos_list.size(); i++) {
 	    Eigen::Vector2f lbl_pos, p0,p1, v0, v1, disp_vec;
 	    // std::cout << "\ni: " << i;
@@ -445,26 +446,30 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
 	    p1 = pos_nd.row(elbl_cnct_nds(i,1));
 	    // std::cout << "\nlbl_pos: " << lbl_pos;
 
-	    v0 = p0 - lbl_pos;
+	    v0 = p0 - lbl_pos; // get vectors
 	    v1 = p1 - lbl_pos;
-	    // std::cout << "\nv0: " << v0 << "\n";
-	    // std::cout << "\nv1: " << v1 << "\n";
 
-	    	
-	    v0 /= v0.norm();
-	    v1 /= v1.norm();
-	    // std::cout << "\nv0 standardized: " << v0;
+	    // standardize vectors
+            if (v0(0) != 0 and v0(1) != 0) {
+		v0 /= v0.norm(); 
+            }
+            if (v1(0) != 0 and v1(1) != 0) {
+              v1 /= v1.norm();
+            }
+            // std::cout << "\nv0 standardized: " << v0;
 	    // std::cout << "\nv1 standardized: " << v1;
 	    
-	    float dot_prod = v0.dot(v1);
-	    float angle =  acos(dot_prod);
+	    // float dot_prod = v0.dot(v1);
+	    // float angle =  acos(dot_prod);
 	    // float force_mult = 1/angle;
 	    // std::cout << "\nangle: " << angle;
 	    // std::cout << "\nforce_mult: " << force_mult;
 
 	    disp_vec = v0 + v1;
-	    disp_vec = disp_vec /= disp_vec.norm();
-	    // std::cout << "\ndisp vec: " << disp_vec;
+            if (disp_vec(0) != 0 and disp_vec(1) != 0) {
+		disp_vec = disp_vec /= disp_vec.norm();
+            }
+            // std::cout << "\ndisp vec: " << disp_vec;
 
 	    // maybe use existing disp vector as force multiplier?
 	    // could use magnitude of current displacement
@@ -478,10 +483,9 @@ Eigen::MatrixXf frucht(Eigen::MatrixXf pos_nd, Eigen::MatrixXf dim_ar, float k, 
 	    // std::cout << "\ndisp vec: " << disp_vec;
 	    
 	    disp.row(elbl_pos_list(i)) += disp_vec; // update
-	    
-
         }
-
+	
+	
         // no gravity for now
 
 	// delta calcs
