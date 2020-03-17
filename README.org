@@ -15,7 +15,7 @@ obvz is an attempt to manage these concepts relations in a more effective approa
 
 
 ** Requirements
-- [[https://github.com/Kungsgeten/org-brain][org-brain]], which requires at least emacs 25.3.
+- [[https://github.com/Kungsgeten/org-brain][org-brain]], which requires at least emacs 25.1.
 - =python3=: it definitely works for me with 3.6 and 3.7. 
 - =PyQt5=: I don't quite know how to navigate jungle of the various packages across which the PyQt5 functions are distributed. On Ubuntu 18.04 I need =python3-pyqt5= and =python3-pyqt5.qtsvg=, I'm not sure how other distributions/OSs handle it. maybe PyQt5 can also be completely installed in pip3.
 - =graphviz= as a system package as well as its python bindings (available in pip3).
