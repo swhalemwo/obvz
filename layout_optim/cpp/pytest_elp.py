@@ -112,4 +112,25 @@ for c in range(len(elbl_pos_list)):
     # maybe have to multiply by constant? 
     disp_vec *= force_mult
     
+from graphviz import Digraph
+dg = Digraph()
+        
+dg.graph_attr = {'rankdir': 'BT', 'dpi': '72'}
+
+dg.edge('a', 'b', label = 'kkk')
+
+import json
+
+dg_gv_piped = dg.pipe(format = 'json')
+dg_gv_parsed = json.loads(dg_gv_piped)
+
+27    86.997
+27    36.026
+27    47.808
+27    63.439
+27    76.842'
+
+is lp? 
+
+dg_gv_parsed['edges'][0]['lp']
 

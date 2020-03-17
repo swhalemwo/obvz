@@ -340,7 +340,7 @@ class obvz_window(QtWidgets.QWidget):
                 self.layout_type = new_graph_dict['layout_type']
                 update_me = 1
         
-                    
+        
 
         # only command is to redraw
         if list(new_graph_dict.keys())[0] == 'redraw':
@@ -384,6 +384,7 @@ class obvz_window(QtWidgets.QWidget):
                 self.node_str = new_graph_dict['nodes']
                 logging.info(['new self.node_str: ', self.node_str])
                 update_me = 1
+                update_texts = 1
 
             # check if node texts have been modified
             if self.node_texts_raw != new_graph_dict['node_texts'] and new_graph_dict['node_texts'] != None:
@@ -662,6 +663,8 @@ class obvz_window(QtWidgets.QWidget):
 
     def recalculate_layout(self):
         """overall command to manage layout re-calculations"""
+        self.base_pos_ar = np.array([(self.g.nodes[i]['x'],self.g.nodes[i]['y']) for i in self.g.nodes])
+        
         if self.layout_type == 'force': 
             self.recalc_layout_force()
             
@@ -675,7 +678,7 @@ class obvz_window(QtWidgets.QWidget):
         logging.info('force recalculating starting')
         
         # get node array
-        self.base_pos_ar = np.array([(self.g.nodes[i]['x'],self.g.nodes[i]['y']) for i in self.g.nodes])
+        # self.base_pos_ar = np.array([(self.g.nodes[i]['x'],self.g.nodes[i]['y']) for i in self.g.nodes])
         # base_pos_ar = np.array([(g.nodes[i]['x'],g.nodes[i]['y']) for i in g.nodes])
         
         pos_nds = np.copy(self.base_pos_ar)
@@ -724,14 +727,13 @@ class obvz_window(QtWidgets.QWidget):
         elbl_cnct_nds = []
         c = 0
         for v in self.g.nodes:
-            if len(v) > 4:
-                if v[0:4] == 'lbl_':
-                    # g.nodes[v]['e_lbl'] = 1
-                    logging.info(["v: ", v, ", c: ", c])
-                    elbl_pos_list.append(c)
-                    cnct_nodes = list(self.g.predecessors(v)) + list(self.g.successors(v))
-                    logging.info(["connected nodes: ", cnct_nodes])
-                    elbl_cnct_nds.append([self.vd[cnct_nodes[0]], self.vd[cnct_nodes[1]]])
+            if self.g.nodes[v]['nd_tp'] == 'lbl':
+                # g.nodes[v]['e_lbl'] = 1
+                logging.info(["v: ", v, ", c: ", c])
+                elbl_pos_list.append(c)
+                cnct_nodes = list(self.g.predecessors(v)) + list(self.g.successors(v))
+                logging.info(["connected nodes: ", cnct_nodes])
+                elbl_cnct_nds.append([self.vd[cnct_nodes[0]], self.vd[cnct_nodes[1]]])
             c +=1
             
         elbl_pos_list = np.array(elbl_pos_list)
@@ -786,23 +788,54 @@ class obvz_window(QtWidgets.QWidget):
         
         dg.graph_attr = {'rankdir': 'BT', 'dpi': '72'}
         
-        dg.edges([i for i in self.g.edges])
+        if self.use_edge_labels != True:
+            dg.edges([i for i in self.g.edges])
         
-        for i in self.g.nodes:
-            # dg.node(i) = {'width': self.g.nodes[i]['width']/96, 'height': self.g.nodes[i]['height']/96}
-            dg.node(i, width = str(self.g.nodes[i]['width']/72), height = str(self.g.nodes[i]['height']/72))
+            for n in self.g.nodes:
+                # dg.node(i) = {'width': self.g.nodes[i]['width']/96, 'height': self.g.nodes[i]['height']/96}
+                dg.node(n, width = str(self.g.nodes[n]['width']/72), height = str(self.g.nodes[n]['height']/72))
 
+                
+        # assumes now that every edge has a label over which the out/in-going nodes can be retrieved
+        if self.use_edge_labels == True:
+            dg_edges = []
+
+            for n in self.g.nodes:
+                if self.g.nodes[n]['nd_tp'] == 'lbl':
+                    node_out = list(self.g.predecessors(n))[0]
+                    node_in = list(self.g.successors(n))[0]
+                    dg.edge(node_out, node_in, label = self.g.nodes[n]['title'])
+        
+            logging.info(['graph:\n', str(dg)])
             
+            # logging.info(['graph:\n', dg])
+        
         dg_gv_piped = dg.pipe(format = 'json')
         dg_gv_parsed = json.loads(dg_gv_piped)
 
 
+        # loop over edges? have to get get info somehow
+        if self.use_edge_labels == True:
+
+            for e in dg_gv_parsed['edges']:
+                lbl_text = e['label']
+                lbl_x, lbl_y = e['lp'].split(',')
+                head_id = e['tail']
+                tail_id = e['head']
+                head_name = dg_gv_parsed['objects'][head_id]['name']
+                tail_name = dg_gv_parsed['objects'][tail_id]['name']
+                elbl_nd_name = elbl_nd_name = "lbl_" + head_name + "_" + tail_name + "_" + lbl_text
+                self.g.nodes[elbl_nd_name]['x'] = float(lbl_x)
+                self.g.nodes[elbl_nd_name]['y'] = float(lbl_y)
+
+                
         for i in dg_gv_parsed['objects']:
             posx, posy = i['pos'].split(',')
-            self.g.nodes[i['name']]['x'] = float(posx) + 20
+            self.g.nodes[i['name']]['x'] = float(posx) + 20 # tf is this +20 doing here
             self.g.nodes[i['name']]['y'] = float(posy)
 
         pos_nds = np.array([(self.g.nodes[i]['x'],self.g.nodes[i]['y']) for i in self.g.nodes])
+        logging.info(['pos_nds:\n', pos_nds])
 
         self.chng_ar = (pos_nds - self.base_pos_ar)/self.step
         
