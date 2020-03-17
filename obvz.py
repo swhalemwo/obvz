@@ -791,8 +791,9 @@ class obvz_window(QtWidgets.QWidget):
         if self.use_edge_labels != True:
             dg.edges([i for i in self.g.edges])
         
-            for n in self.g.nodes:
-                # dg.node(i) = {'width': self.g.nodes[i]['width']/96, 'height': self.g.nodes[i]['height']/96}
+        for n in self.g.nodes:
+            # dg.node(i) = {'width': self.g.nodes[i]['width']/96, 'height': self.g.nodes[i]['height']/96}
+            if self.g.nodes[n]['nd_tp'] == 'nd':
                 dg.node(n, width = str(self.g.nodes[n]['width']/72), height = str(self.g.nodes[n]['height']/72))
 
                 
@@ -826,6 +827,7 @@ class obvz_window(QtWidgets.QWidget):
                 tail_name = dg_gv_parsed['objects'][tail_id]['name']
                 elbl_nd_name = elbl_nd_name = "lbl_" + head_name + "_" + tail_name + "_" + lbl_text
                 self.g.nodes[elbl_nd_name]['x'] = float(lbl_x)
+                # self.g.nodes[elbl_nd_name]['x'] = float(lbl_x) + self.g.nodes[elbl_nd_name]['width']/2
                 self.g.nodes[elbl_nd_name]['y'] = float(lbl_y)
 
                 
