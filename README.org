@@ -15,12 +15,11 @@ obvz is an attempt to manage these concepts relations in a more effective approa
 
 
 ** Requirements
-- [[https://github.com/Kungsgeten/org-brain][org-brain]], which requires at least emacs 26.1
+- [[https://github.com/Kungsgeten/org-brain][org-brain]], which requires at least emacs 25.3.
 - =python3=: it definitely works for me with 3.6 and 3.7. 
 - =PyQt5=: I don't quite know how to navigate jungle of the various packages across which the PyQt5 functions are distributed. On Ubuntu 18.04 I need =python3-pyqt5= and =python3-pyqt5.qtsvg=, I'm not sure how other distributions/OSs handle it. maybe PyQt5 can also be completely installed in pip3.
 - =graphviz= as a system package as well as its python bindings (available in pip3).
 - =numpy, networkx, Pillow=: available in pip3.
-
 
 
 *** Connectivity
@@ -39,14 +38,16 @@ the connection type can be specified by setting =obvz-connection-type=.
 
 
 ** Start & Stop
-- run =M-x obvz-start= to open a PyQt window (or run obvz.py in a terminal).
+- run =M-x obvz-start= to open a PyQt window (alternatively, run obvz.py in a terminal, in which case connection type and layout have to be specified).
 - when done, close the PyQt window and run =M-x obvz-stop= to unload the obvz functions from the org-brain hooks.
 
 ** Usage:
 
 It seems to me that a key aspect of data visualization in general and network visualization in particular is to focus only on the few relevant parts of the brain. Consequently, large parts of obvz involve slicing and dicing the org-brain in customizable ways. 
 
-*Edge direction*: I myself prefer directed edges. While hierarchical relations go from parents to children and are hence obviously directed, direction is less straightforward with friend relationships. To solve this issue and give direction to =org-brain's= friend relationships, obvz uses *edge annotations*. These edge annotations are created in org-brain either as bi-directional (=e=) or one-directional (=C-u e=). The role of edge annotations can be customized with =obvz-only-use-annotated-edges=. Visualization of the precise content of annotations is not supported yet, just the presence or absence is relevant. 
+*Edge direction*: I myself prefer directed edges. While hierarchical relations go from parents to children and are hence obviously directed, direction is less straightforward with friend relationships. To solve this issue and give direction to =org-brain's= friend relationships, obvz uses *edge annotations*. These edge annotations are created in org-brain either as bi-directional (=e=) or one-directional (=C-u e=). The role of edge annotations can be customized with =obvz-only-use-annotated-edges=. 
+
+*Edge label visualization* can be toggled on and off with =E= (=obvz-toggle-edge-labels=). 
 
 *Node selection* works via org-brain's feature of pinning nodes (=n=), which visualizes
 - the node itself 
@@ -60,7 +61,7 @@ It seems to me that a key aspect of data visualization in general and network vi
 - normal execution does minor modifications (it re-applies the [[https://en.wikipedia.org/wiki/Force-directed_graph_drawing][force-directed drawing algorithm]] to the current layout); this can sometimes "iron out" "knots" in the graph.
 - execution with prefix =C-u= generates a new layout based on random starting positions.
 
-*Node text*: switch display of node body text on and off with =N= (=M-x obvz-switch-node-text-inclusion=). The node body text follows the same convention as in org-brain, i.e. file/entry text until next headline.
+*Node text*: switch display of node body text on and off with =N= (=M-x obvz-switch-node-text-inclusion=). The node body text follows the same convention as in org-brain-visualize, i.e. file/entry text until next headline.
 
 ** Customization
 - =obvz-only-use-annotated-edges=: whether friend links are only included when annotated (default =t=). (=t= is not strictly necessary for the dot layout, but strongly recommended).
@@ -75,13 +76,13 @@ obvz is intended primarily as a digital sketch board rather than a sophisticated
 [[file:demo/layout_demo.gif]]
 
 *** updating node positions in force-directed graph
-
 [[file:demo/reposition_demo.gif]]
 
 *** toggling node text
 [[file:demo/text_inclusion_demo.gif]]
 
-
+*** toggling edge labels
+[[file:demo/edge_labels_demo.gif]]
 
 ** Particularities/Limitation
 - node body text is (currently) not being automatically wrapped; it has to be manually ensured that nodes do not become too wide or long.
@@ -89,16 +90,19 @@ obvz is intended primarily as a digital sketch board rather than a sophisticated
   - changes of the node body text.
   - restarting obvz after it has been closed a previous time.
   - in these cases, the layout can be updated with =U= (=M-x obvz-update-graph=).
-- the force-directed layout algorithm (layout_optim/ovlp_func_v2.py) can also be compiled manually with [[https://github.com/serge-sans-paille/pythran][pythran]] (the resulting .so file then has to be moved into the top directory).
-- it is not completely clear to me how node height and width work in the graphviz dot layout. the current configuration (found by trial and error) seems to prevent node overlaps, but it is unclear if they are completely avoided. 
+- the force-directed layout algorithm (layout_optim/fruch_v3.cpp) can also be compiled manually with [[https://github.com/pybind/pybind11][pybind]] (e.g. =g++ -O3 -Wall -shared -std=c++17 -fPIC `python3 -m pybind11 --includes` frucht_v3.cpp -o frucht_v3.so=; the resulting .so file then has to be moved into the top directory).
+- it is not completely clear to me how node height and width work in the graphviz dot layout. the current configuration (resulting from trial and error) seems to prevent node overlaps, but it is unclear if they are completely avoided. 
 - the dot layout may not fit the screen.
 - the dot layout may not be consistent if the graph is not acyclic.
+- edge labels in the dot layout are somewhat janky.
 - if node text is included when exporting to dot, special characters (like "&") that can cause dot to malfunction have to be manually removed.
+- bidirectional edges can make it difficult to identify which label belongs to which edge. I will likely fix that sometime by adjusting the layout algorithm.
+
 
 ** Future Ideas
-- enhanced datamodel: embed concept relationships in documents: e.g. hyperedges
-- multiedges 
-- edge labels visualization
+- enhanced datamodel: embed concept relationships in nodes (e.g. statements in documents)
+- multiedges
+- +edge labels visualization+
 - prevent edge overlap in reciprocal relations
 - node properties visualization
 - more node shapes
