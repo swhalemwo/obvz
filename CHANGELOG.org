@@ -1,6 +1,12 @@
 * CHANGELOG
 
 ** <2020-03-13 vr>
-layout algorithm rewritten in pure c++ with Eigen, python integration with pybind
+- layout algorithm rewritten in pure c++ with Eigen, python integration with pybind
+- seems to increase layout calculation speed by factor 5-10
 
-seems to increase layout calculation speed by factor 5-10
+** <2020-03-18 wo>
+- added edge label visualization, can be toggled with =obvz-toggle-edge-labels= (E)
+
+
+
+
