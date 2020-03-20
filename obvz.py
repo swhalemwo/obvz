@@ -36,7 +36,7 @@ from graphviz import Digraph
 # import graphviz
 
 
-from ovlp_func_v2 import pythran_itrtr_cbn
+# from ovlp_func_v2 import pythran_itrtr_cbn
 from frucht_v3 import frucht
 
 

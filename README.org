@@ -100,8 +100,11 @@ obvz is intended primarily as a digital sketch board rather than a sophisticated
 
 
 ** Future Ideas
+
+- submit to MELPA
 - enhanced datamodel: embed concept relationships in nodes (e.g. statements in documents)
 - multiedges
+- make PyQt window clickable 
 - +edge labels visualization+
 - prevent edge overlap in reciprocal relations
 - node properties visualization
