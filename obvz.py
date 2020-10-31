@@ -103,6 +103,28 @@ def get_edge_point_delta(wd, ht, angle):
         dx, dy = opp, adj
     return dx, dy
 
+def get_reorder_order_sliced(point_nbr):
+    """gets reorder sequence to re-arrange rows in point dist matrix
+    now focused on extremes rather than points -> reduces number of rows to 25%
+    """
+    
+    test_order = []
+    # point_nbr = 20
+
+    for i in range(point_nbr):
+            for k in range(2):
+                test_order.append(i+ (point_nbr*k))
+
+    test_order = np.array(test_order)
+
+    test_orders = []
+    for i in range(point_nbr):
+        test_orders.append((test_order + (point_nbr*2*i)).tolist())
+
+    row_order_final = [i for sub_list in test_orders for i in sub_list]
+    return row_order_final
+
+
 
 
 def rect_points(r):
