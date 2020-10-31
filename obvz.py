@@ -268,6 +268,7 @@ class obvz_window(QtWidgets.QWidget):
 
     
     def signal_received(self, new_graph_str):
+        """deal received signal"""
         logging.info(' receiving')
         # main parsing/updates has to happen here
         new_graph_dict = json.loads(new_graph_str)
@@ -281,13 +282,23 @@ class obvz_window(QtWidgets.QWidget):
             self.draw_arrow_toggle = new_graph_dict['draw_arrow_toggle']
 
         # change layout type
+
+        
         
         if list(new_graph_dict.keys())[0] == "layout_type":
             if self.layout_type != new_graph_dict['layout_type']:
                 self.layout_type = new_graph_dict['layout_type']
                 update_me = 1
         
-        
+        if list(new_graph_dict.keys())[0] == "font_size":
+            self.font_size = new_graph_dict['font_size']
+            font_title = QFont("Arial", self.font_size)
+            fm = QFontMetrics(font_title)
+            self.title_vflush = fm.boundingRect("node title").height()
+            self.set_node_wd_ht(list(self.g.nodes()))
+            update_me = 1
+            # update_texts = 1
+
 
         # only command is to redraw
         if list(new_graph_dict.keys())[0] == 'redraw':
@@ -380,7 +391,7 @@ class obvz_window(QtWidgets.QWidget):
 
 
     def get_node_text_dimensions(self, fm_nt, node_text):
-        
+        """calculate stuff related to when text is included"""
         # n = 'bobbie'
         # node_text = new_graph_dict['node_texts'][n]
         # font = QFont("Arial", 10)
@@ -423,7 +434,6 @@ class obvz_window(QtWidgets.QWidget):
         fm_nt = QFontMetrics(font) # font metric node text
 
 
-
         for n in nodes_to_recalc_dims:
             if self.g.nodes[n]['nd_tp'] == 'nd':
                 node_rect = fm.boundingRect(self.g.nodes[n]['title'])
@@ -440,6 +450,7 @@ class obvz_window(QtWidgets.QWidget):
 
                 self.g.nodes[n]['width'] = max(nt_dims[0]) + self.wd_pad*2
                 self.g.nodes[n]['height'] = sum(nt_dims[1])
+                logging.info(['node dims: ', self.g.nodes[n]['width'], self.g.nodes[n]['height']])
 
             # if node is an edge label node there's no need to check for node text
             if self.g.nodes[n]['nd_tp'] == 'lbl':
@@ -945,11 +956,14 @@ class obvz_window(QtWidgets.QWidget):
 
         # draw node titles and text
 
+        logging.info(['vflush: ', self.title_vflush])
+
         for t in zip(self.qt_coords, self.dim_ar, self.node_names):
 
             if self.g.nodes[t[2]]['nd_tp'] == 'nd':
                 qp.setFont(QFont('Arial', self.font_size * scl))
                 ypos = (t[0][1]-t[1][1]/2) + self.title_vflush/1.3333
+
 
             if self.g.nodes[t[2]]['nd_tp'] == 'lbl':
                 qp.setFont(QFont('Arial', self.node_text_size * scl))
@@ -959,7 +973,6 @@ class obvz_window(QtWidgets.QWidget):
                 
             xpos = t[0][0]-t[1][0]/2+ self.wd_pad
             
-
             # qp.drawText(xpos, ypos, t[2])
             qp.drawText(xpos, ypos, self.g.nodes[t[2]]['title'])
             

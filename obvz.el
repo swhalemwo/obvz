@@ -413,6 +413,16 @@
     (obvz-send-to-python (json-encode `(("layout_type" . ,obvz-layout-type))))
     )
 
+
+(defun obvz-change-setting ()
+    "change settings in python"
+    (interactive)
+    (let ((setting-dict `(("font_size" . ,(read-number "new font size: ")))))
+	(obvz-send-to-python (json-encode setting-dict))))
+
+
+
+
 ;; connection functions
 
 (defun obvz-send-to-python (dict-str-to-send)
@@ -433,12 +443,12 @@
     method args))
 	
 	    
-;; (add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain
+(add-hook 'org-brain-after-visualize-hook 'obvz-update-graph) ;; automatic redrawing with org-brain
 
 (setq obvz-connection-type "dbus")
 
 (setq obvz-include-node-texts nil)
-(setq obvz-only-use-annotated-edges t)
+(setq obvz-only-use-annotated-edges nil)
 (setq obvz-most-recent-config ())
 (setq obvz-draw-arrow t)
 (setq obvz-highlight-current-node t)
