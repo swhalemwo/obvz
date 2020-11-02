@@ -414,9 +414,22 @@
     )
 
 
+(setq obvz-setting-options-alist
+      `(("font size" .
+	 ( 
+	   ("python-name" . "font_size")
+	   ("entry-func" . 'read-number)
+
+	 ))))
+
+i
+
+
 (defun obvz-change-setting ()
     "change settings in python"
     (interactive)
+
+    
     (let ((setting-dict `(("font_size" . ,(read-number "new font size: ")))))
 	(obvz-send-to-python (json-encode setting-dict))))
 
