@@ -1,6 +1,6 @@
-#!/usr/bin/python3
+#!/usr/bin/python3.8
 
-import time 
+import time
 
 import json
 
@@ -266,6 +266,22 @@ class obvz_window(QtWidgets.QWidget):
         self.g = nx.DiGraph()
         self.update()
 
+
+    def change_settings(self, setting_dict):
+        """changes setting"""
+
+        logging.info(setting_dict)
+        
+        setting_to_change = list(setting_dict.keys())[0]
+        new_value = setting_dict[setting_to_change]
+
+        logging.info(["setting_to_change: ", setting_to_change])
+        logging.info(["new_value: ", new_value])
+
+            
+        setattr(self, setting_to_change, new_value)
+        
+
     
     def signal_received(self, new_graph_str):
         """deal received signal"""
@@ -282,7 +298,6 @@ class obvz_window(QtWidgets.QWidget):
             self.draw_arrow_toggle = new_graph_dict['draw_arrow_toggle']
 
         # change layout type
-
         
         
         if list(new_graph_dict.keys())[0] == "layout_type":
@@ -291,13 +306,17 @@ class obvz_window(QtWidgets.QWidget):
                 update_me = 1
         
         if list(new_graph_dict.keys())[0] == "font_size":
-            self.font_size = new_graph_dict['font_size']
+            # self.font_size = new_graph_dict['font_size']
+            self.change_settings(new_graph_dict)
             font_title = QFont("Arial", self.font_size)
             fm = QFontMetrics(font_title)
             self.title_vflush = fm.boundingRect("node title").height()
             self.set_node_wd_ht(list(self.g.nodes()))
             update_me = 1
             # update_texts = 1
+
+        
+
 
 
         # only command is to redraw
