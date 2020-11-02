@@ -281,6 +281,13 @@ class obvz_window(QtWidgets.QWidget):
             
         setattr(self, setting_to_change, new_value)
         
+    def update_visuals(self):
+        """update the visuals, may have to be run often -> put into own function"""
+        font_title = QFont("Arial", self.font_size)
+        fm = QFontMetrics(font_title)
+        self.title_vflush = fm.boundingRect("node title").height()
+        self.set_node_wd_ht(list(self.g.nodes()))
+
 
     
     def signal_received(self, new_graph_str):
@@ -308,10 +315,7 @@ class obvz_window(QtWidgets.QWidget):
         if list(new_graph_dict.keys())[0] == "font_size":
             # self.font_size = new_graph_dict['font_size']
             self.change_settings(new_graph_dict)
-            font_title = QFont("Arial", self.font_size)
-            fm = QFontMetrics(font_title)
-            self.title_vflush = fm.boundingRect("node title").height()
-            self.set_node_wd_ht(list(self.g.nodes()))
+            self.update_visuals()
             update_me = 1
             # update_texts = 1
 
@@ -975,7 +979,7 @@ class obvz_window(QtWidgets.QWidget):
 
         # draw node titles and text
 
-        logging.info(['vflush: ', self.title_vflush])
+        # logging.info(['vflush: ', self.title_vflush])
 
         for t in zip(self.qt_coords, self.dim_ar, self.node_names):
 
