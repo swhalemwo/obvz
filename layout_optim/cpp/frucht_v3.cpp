@@ -1,5 +1,6 @@
 #include <iostream>
-#include <Eigen/Dense>
+// #include <Eigen/Dense>
+
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
@@ -32,6 +33,7 @@ void visit_lambda(const Mat& m, const Func& f)
 /**
    calculate 1d deltas
    can probably be used to construct deltas overall
+
 */
 
 Eigen::MatrixXf dists1d(const Eigen::Ref<const Eigen::VectorXf> v) {

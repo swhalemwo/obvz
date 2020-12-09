@@ -425,6 +425,7 @@
 
 
 
+
 (defun obvz-change-setting ()
     "change settings in python"
     (interactive)
@@ -477,7 +478,7 @@
 (define-key org-brain-visualize-mode-map "E" 'obvz-toggle-edge-labels)
 
 ;; ========== set these before loading the functions ==============
-;; (setq obvz-python-version "python3")
+(setq obvz-python-version "python3.8")
 ;; (setq obvz-dir "~/obvz/")
 
 

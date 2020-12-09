@@ -172,7 +172,7 @@ class obvz_window(QtWidgets.QWidget):
         
         self.dt = self.init_t/(self.def_itr) # delta temperature, (int) sets number of iterations
         self.rep_nd_brd_start = 0.3 # relative size of end time frame in which node borders become repellant
-        self.k = 30.0 # desired distance? 
+        self.k = 60.0 # desired distance? 
         self.step = 8.0 # how many steps realignment takes
         self.update_interval = 40 # time for step in milliseconds
         
