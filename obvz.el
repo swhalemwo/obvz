@@ -423,9 +423,6 @@
 	 ))))
 
 
-
-
-
 (defun obvz-change-setting ()
     "change settings in python"
     (interactive)
@@ -434,7 +431,11 @@
     (let ((setting-dict `(("font_size" . ,(read-number "new font size: ")))))
 	(obvz-send-to-python (json-encode setting-dict))))
 
-
+(defun obvz-run-cypher-query()
+    "run some cypher query"
+    (interactive)
+    (let ((setting-dict `(("neo4j" . t))))
+	(obvz-send-to-python (json-encode setting-dict))))
 
 
 ;; connection functions

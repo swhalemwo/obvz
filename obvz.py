@@ -281,6 +281,38 @@ class obvz_window(QtWidgets.QWidget):
             
         setattr(self, setting_to_change, new_value)
         
+    def neo4j_query(self):
+        qry ="""MATCH (t1:tag)-[:CONCERNS]->(w:work)<-[:CONCERNS]-(t2:tag)
+        WHERE t1.name >= t2.name
+        RETURN DISTINCT t1.name, t2.name, count(w) as count
+        ORDER BY count DESC LIMIT 200;"""
+
+        from neo4j import GraphDatabase
+        
+        drvr = GraphDatabase.driver('bolt://127.0.0.1:7687', auth=('neo4j', 'anudora'))
+        segs = drvr.session()
+
+        res=segs.run(qry).data()
+
+        links = [x['t1.name'] + " -- " + x['t2.name'] for x in res]
+        nodes = np.unique([item for sublist in [(x['t1.name'],  x['t2.name']) for x in res] for item in sublist]).tolist()
+
+        return {'links': links, 'nodes': nodes}
+        
+        
+        # ## need to put res into format that can be passed to update_graph()
+        # self.update_graph(new_graph_dict['links'], new_graph_dict['nodes'])
+        # # self.set_node_wd_ht(list(self.g.nodes()), new_graph_dict['node_texts'])                
+        # self.link_str = new_graph_dict['links']
+        # self.node_str = new_graph_dict['nodes']
+        # logging.info(['new self.node_str: ', self.node_str])
+        # update_me = 1
+        # update_texts = 1
+
+
+
+        
+
     def update_visuals(self):
         """update the visuals, may have to be run often -> put into own function"""
         font_title = QFont("Arial", self.font_size)
@@ -319,9 +351,6 @@ class obvz_window(QtWidgets.QWidget):
             update_me = 1
             # update_texts = 1
 
-        
-
-
 
         # only command is to redraw
         if list(new_graph_dict.keys())[0] == 'redraw':
@@ -329,6 +358,27 @@ class obvz_window(QtWidgets.QWidget):
 
         if list(new_graph_dict.keys())[0] == 'export':
             self.export_graph(new_graph_dict['export']['export_type'], new_graph_dict['export']['export_file'])
+
+        
+        logging.info(["graph", self.g])
+
+        # run neo4j query
+        if list(new_graph_dict.keys())[0] == 'neo4j':
+            neo4j_res=self.neo4j_query()
+            self.update_graph(neo4j_res['links'], neo4j_res['nodes'])
+
+            node_texts_temp = {}
+            for i in neo4j_res['nodes']:
+                node_texts_temp[i]="" 
+
+            self.proc_node_texts(node_texts_temp)
+                
+            self.set_node_wd_ht(neo4j_res['nodes'])
+
+
+            self.link_str = neo4j_res['links']
+            self.node_str = neo4j_res['nodes']
+            update_me = 1
 
 
         # update current node or graph
@@ -979,7 +1029,7 @@ class obvz_window(QtWidgets.QWidget):
 
         # draw node titles and text
 
-        # logging.info(['vflush: ', self.title_vflush])
+        # ##logging.info(['vflush: ', self.title_vflush])
 
         for t in zip(self.qt_coords, self.dim_ar, self.node_names):
 
