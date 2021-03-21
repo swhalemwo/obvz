@@ -17,6 +17,10 @@ import json
 app = QApplication(sys.argv)
 
 
+rel_type_dict = {"BRAIN_CHILDREN": 'bc',
+                 "BRAIN_PARENTS" : 'bp'}
+
+
 class obvz_window(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -31,43 +35,80 @@ class obvz_window(QtWidgets.QWidget):
     def signal_received(self, string_received):
         """deal received signal"""
         logging.info('receiving')
-        print(string_received)
+        # print(string_received)
         content = json.loads(string_received)
         print(content)
 
-        content = {k: v.split(" ") for k,v in content.items()}
+        # edge separate edge_list for each link type
 
-        print(content)
+        edge_list = self.process_received_content(content)
+
+        for rel_type in rel_type_dict.values():
+            if rel_type in edge_list:
+                self.update_n4j_entries(edge_list[rel_type], rel_type)
+        
+
+    def process_received_content(self, content):
+        edge_list = {}
+
+        # k = list(content.keys())[0] # this is ugly way to get name, and won't work on 
+
+        # for coerg in ["BRAIN_CHILDREN", "BRAIN_PARENTS"]:
+
+        for k,v in content.items():
+            if v is not None:
+                for coerg,nodes_string in v.items():
+                    if coerg in ["BRAIN_CHILDREN", "BRAIN_PARENTS"]:
+                        coerg_short = rel_type_dict[coerg]
+
+                        nodes_split = nodes_string.split(" ")
+                        # print(coerg, "\n")
+                        # print(nodes_split)
+
+                        if coerg_short in edge_list:
+                            for j in nodes_split:
+                                edge_list[coerg_short].append([k, j])
+                        else:
+                            edge_list[coerg_short] = [[k,j] for j in nodes_split]
+
+        print(edge_list)
+        return edge_list 
+
+
+        # contents = [{k: v.split(" ") for k,v in i.items()} for i in content.items()]
+
+        # print(content)
+
+        # for k,v in content.items():
+            
         
         # main parsing/updates has to happen here
 
-def update_n4j_entries(edge_list, rel_type):
-    """would be good to have general approach that can handle any number of entries"""
-    # should be two node types: yeah but created here
+    def update_n4j_entries(self, edge_list, rel_type):
+        """would be good to have general approach that can handle any number of entries"""
+        # should be two node types: yeah but created here
 
-    # edge list: just list of lists?
-
-
-    node1_params = {'nodes': [{'name': i} for i in list(set([k[0] for k in edge_list]))]}
-
-    # first del query to clear up
-    del_query = """UNWIND $nodes as node
-    match (f:tag {name: node.name})-[r:""" + rel_type + """]->(n) delete r
-    """
-    
-    edge_params = {'pairs': [{'node1': i[0], 'node2': i[1]} for i in edge_list]}
-
-    add_qry = """UNWIND $pairs as pair
-    MERGE (a {name: pair.node1})
-    WITH a, pair
-    MERGE (b {name: pair.node2})
-    MERGE (a)-[:""" + rel_type + """]->(b)"""
-    
-    
-    x=segs.run(del_query, parameters = node1_params)
-    x= segs.run(add_qry, parameters = edge_params)
+        # edge list: just list of lists?
 
 
+        node1_params = {'nodes': [{'name': i} for i in list(set([k[0] for k in edge_list]))]}
+
+        # first del query to clear up
+        del_query = """UNWIND $nodes as node
+        match (f:tag {name: node.name})-[r:""" + rel_type + """]->(n) delete r
+        """
+
+        edge_params = {'pairs': [{'node1': i[0], 'node2': i[1]} for i in edge_list]}
+
+        add_qry = """UNWIND $pairs as pair
+        MERGE (a {name: pair.node1})
+        WITH a, pair
+        MERGE (b {name: pair.node2})
+        MERGE (a)-[:""" + rel_type + """]->(b)"""
+
+
+        x=segs.run(del_query, parameters = node1_params)
+        x= segs.run(add_qry, parameters = edge_params)
 
 
     
