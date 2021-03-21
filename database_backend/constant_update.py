@@ -35,45 +35,48 @@ class obvz_window(QtWidgets.QWidget):
         content = json.loads(string_received)
         print(content)
 
-        for i in content:
-            content[i] = content[i].split(" ")
+        content = {k: v.split(" ") for k,v in content.items()}
 
         print(content)
         
         # main parsing/updates has to happen here
 
-# update check with test children (tchin)
-tchin1 = ['wrk1', 'wrk2', 'wrk3']
-tchin2 = ['wrk1', 'wrk2', 'wrk3', 'wrk4', 'wrk5']
-tchin3 = ['wrk1', 'wrk3', 'wrk5']
+def update_n4j_entries(edge_list, rel_type):
+    """would be good to have general approach that can handle any number of entries"""
+    # should be two node types: yeah but created here
 
-params1 = {'pairs': [{'tag': 'test', 'work': i} for i in tchin1]}
-params2 = {'pairs': [{'tag': 'test', 'work': i} for i in tchin2]}
-params3 = {'pairs': [{'tag': 'test', 'work': i} for i in tchin3]}
-
-node_params = {'nodes': [{'name': 'test'}]}
-
-del_query = """UNWIND $nodes as node
-match (f:tag {name: node.name})-[r:CONCERNS]->(n) delete r
-"""
+    # edge list: just list of lists?
 
 
-tag_qry = """UNWIND $pairs as pair
-MERGE (a:tag {name: pair.tag})
-WITH a, pair
-MERGE (b:work {name: pair.work})
-MERGE (a)-[:CONCERNS]->(b)"""
+    node1_params = {'nodes': [{'name': i} for i in list(set([k[0] for k in edge_list]))]}
 
-x=segs.run(del_query, parameters = node_params)
-x= segs.run(tag_qry, parameters = params1)
+    # first del query to clear up
+    del_query = """UNWIND $nodes as node
+    match (f:tag {name: node.name})-[r:""" + rel_type + """]->(n) delete r
+    """
+    
+    edge_params = {'pairs': [{'node1': i[0], 'node2': i[1]} for i in edge_list]}
 
-x=segs.run(del_query, parameters = node_params)
-x= segs.run(tag_qry, parameters = params2)
+    add_qry = """UNWIND $pairs as pair
+    MERGE (a {name: pair.node1})
+    WITH a, pair
+    MERGE (b {name: pair.node2})
+    MERGE (a)-[:""" + rel_type + """]->(b)"""
+    
+    
+    x=segs.run(del_query, parameters = node1_params)
+    x= segs.run(add_qry, parameters = edge_params)
 
-x=segs.run(del_query, parameters = node_params)
-x= segs.run(tag_qry, parameters = params3)
 
 
+
+    
+# keywords = {'BRAIN_CHILDREN': ['Molnar_2005_architecture', 'Komarova_Velthuis_2018_activation', 'Warczok_Beyer_2021_sociology'], 'BRAIN_PARENTS': ['cls_tags']}
+
+# # keywords edge_list 
+# kw_el = [['field', i] for i in keywords['BRAIN_CHILDREN']]
+
+# update_n4j_entries(kw_el, 'bc')
 
 
 
@@ -123,3 +126,5 @@ if __name__ == "__main__":
 
     mw = obvz_window()
     sys.exit(app.exec_())
+
+    
