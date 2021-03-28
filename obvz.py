@@ -281,7 +281,7 @@ class obvz_window(QtWidgets.QWidget):
             
         setattr(self, setting_to_change, new_value)
         
-    def cypher_query(self):
+    def cypher_query(self, qry):
         """run cypher query against the neo4j database""" 
         
 
@@ -289,15 +289,17 @@ class obvz_window(QtWidgets.QWidget):
         # WHERE t1.name >= t2.name
         # RETURN DISTINCT t1.name, t2.name, count(w) as count
         # ORDER BY count DESC LIMIT 200;"""
+        logging.info(['query', qry])
 
-        qry = """match (col) where col.name in ["career", "cls_papers", "cls_toread", "sbcls_A", "sbcls_B", "sbcls_C", "sbcls_D", "sbcls_E"]
-        with collect(col) as cl
-        match (n {name:"career"})-[:bc]->(p)
-        with n,p,cl
-        match (f1)<-[:bp]-(p)-[:bp]->(f2) where not f1 in cl and not f2 in cl
-        with f1, f2, collect(p) as pname, count(p) as cnt
-        WHERE cnt > 2 and f1.name > f2.name
-        return f1.name, f2.name"""
+
+        # qry = """match (col) where col.name in ["career", "cls_papers", "cls_toread", "sbcls_A", "sbcls_B", "sbcls_C", "sbcls_D", "sbcls_E"]
+        # with collect(col) as cl
+        # match (n {name:"career"})-[:bc]->(p)
+        # with n,p,cl
+        # match (f1)<-[:bp]-(p)-[:bp]->(f2) where not f1 in cl and not f2 in cl
+        # with f1, f2, collect(p) as pname, count(p) as cnt
+        # WHERE cnt > 2 and f1.name > f2.name
+        # return f1.name, f2.name"""
 
 
         from neo4j import GraphDatabase
@@ -376,8 +378,8 @@ class obvz_window(QtWidgets.QWidget):
         logging.info(["graph", self.g])
 
         # run neo4j query
-        if list(new_graph_dict.keys())[0] == 'neo4j':
-            neo4j_res=self.cypher_query()
+        if list(new_graph_dict.keys())[0] == 'cypher':
+            neo4j_res=self.cypher_query(new_graph_dict['cypher'])
             self.update_graph(neo4j_res['links'], neo4j_res['nodes'])
 
             node_texts_temp = {}

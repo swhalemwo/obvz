@@ -431,12 +431,24 @@
     (let ((setting-dict `(("font_size" . ,(read-number "new font size: ")))))
 	(obvz-send-to-python (json-encode setting-dict))))
 
-(defun obvz-run-cypher-query()
+(defun obvz-run-cypher-query(qry)
     "run some cypher query"
     (interactive)
-    (let ((setting-dict `(("neo4j" . t))))
-	(obvz-send-to-python (json-encode setting-dict))))
+    (let ((setting-dict `(("cypher" . ,qry))))
+	;; (message "%s" setting-dict)
+	(obvz-send-to-python (json-encode setting-dict))
+	))
 
+(setq qry "match (col) where col.name in [\"career\", \"cls_papers\", \"cls_toread\", \"sbcls_A\", \"sbcls_B\", \"sbcls_C\", \"sbcls_D\", \"sbcls_E\"]
+        with collect(col) as cl
+        match (n {name:\"career\"})-[:bc]->(p)
+        with n,p,cl
+        match (f1)<-[:bp]-(p)-[:bp]->(f2) where not f1 in cl and not f2 in cl
+        with f1, f2, collect(p) as pname, count(p) as cnt
+        WHERE cnt > 2 and f1.name > f2.name
+        return f1.name, f2.name")
+
+(obvz-run-cypher-query qry)
 
 ;; connection functions
 
