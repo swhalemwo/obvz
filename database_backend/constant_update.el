@@ -13,11 +13,11 @@
     )
 
 
-(generate-ob-n4j-keywords "status")
+;; (generate-ob-n4j-keywords "status")
 
-(send-org-brain-keywords-to-python "status")
+;; (send-org-brain-keywords-to-python "status")
 
-(send-org-brain-keywords-to-python "kkk")
+;; (send-org-brain-keywords-to-python "kkk")
 
 ;; definitely should have option to send list of keyword entries
 ;; if i just want to send 1, just send list of 1
@@ -49,5 +49,5 @@
 
 (setq obvz-connection-type "dbus")
 
-(obvz-dbus-caller "echo" "stuff")
+;; (obvz-dbus-caller "echo" "stuff")
 
