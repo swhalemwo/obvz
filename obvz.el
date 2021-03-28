@@ -450,7 +450,28 @@
 
 (obvz-run-cypher-query qry)
 
-;; connection functions
+(defun org-babel-execute:cypher (body params)
+    """slight modified ob-cypher function: just add flag whether to send to obvz or not"""
+  (let* ((host (or (cdr (assoc :host params)) "127.0.0.1"))
+         (port (or (cdr (assoc :port params)) 1337))
+         (username (or (cdr (assoc :username params)) "neo4j"))
+         (password (or (cdr (assoc :password params)) "neo4j"))
+	       (authstring (base64-encode-string (concat username ":" password)))
+         (http-port (or (cdr (assoc :http-port params)) 7474))
+         (result-type (cdr (assoc :result-type params)))
+         (output (cdr (assoc :file params)))
+	 (obvz (cdr (assoc :obvz params)))
+         (body (if (s-ends-with? ";" body) body (s-append ";" body))))
+      (when obvz
+	  (message body)
+	  (obvz-run-cypher-query body)
+	  )
+	  
+    (if output
+        (ob-cypher/dot body host http-port output authstring)
+      (ob-cypher/rest body host http-port authstring))))
+
+;; ** connection functions
 
 (defun obvz-send-to-python (dict-str-to-send)
     """general function to send stuff python, input is json-encoded dict string"""
