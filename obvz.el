@@ -449,16 +449,6 @@
 	(obvz-send-to-python (json-encode setting-dict))
 	))
 
-(setq qry "match (col) where col.name in [\"career\", \"cls_papers\", \"cls_toread\", \"sbcls_A\", \"sbcls_B\", \"sbcls_C\", \"sbcls_D\", \"sbcls_E\"]
-        with collect(col) as cl
-        match (n {name:\"career\"})-[:bc]->(p)
-        with n,p,cl
-        match (f1)<-[:bp]-(p)-[:bp]->(f2) where not f1 in cl and not f2 in cl
-        with f1, f2, collect(p) as pname, count(p) as cnt
-        WHERE cnt > 2 and f1.name > f2.name
-        return f1.name, f2.name")
-
-(obvz-run-cypher-query qry)
 
 (defun org-babel-execute:cypher (body params)
     """slight modified ob-cypher function: just add flag whether to send to obvz or not"""

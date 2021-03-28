@@ -291,17 +291,6 @@ class obvz_window(QtWidgets.QWidget):
         # ORDER BY count DESC LIMIT 200;"""
         logging.info(['query', qry])
 
-
-        # qry = """match (col) where col.name in ["career", "cls_papers", "cls_toread", "sbcls_A", "sbcls_B", "sbcls_C", "sbcls_D", "sbcls_E"]
-        # with collect(col) as cl
-        # match (n {name:"career"})-[:bc]->(p)
-        # with n,p,cl
-        # match (f1)<-[:bp]-(p)-[:bp]->(f2) where not f1 in cl and not f2 in cl
-        # with f1, f2, collect(p) as pname, count(p) as cnt
-        # WHERE cnt > 2 and f1.name > f2.name
-        # return f1.name, f2.name"""
-
-
         from neo4j import GraphDatabase
         
         drvr = GraphDatabase.driver('bolt://127.0.0.1:7687', auth=('neo4j', 'anudora'))
