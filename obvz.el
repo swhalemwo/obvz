@@ -426,10 +426,20 @@
 (defun obvz-change-setting ()
     "change settings in python"
     (interactive)
-
     
-    (let ((setting-dict `(("font_size" . ,(read-number "new font size: ")))))
-	(obvz-send-to-python (json-encode setting-dict))))
+    (let* ((settings-to-change (list "font_size" "k" "wd_pad"))
+	   (setting-to-change (completing-read "setting to change: " settings-to-change nil t))
+	   (new-value (read-number "new value: "))
+	   (setting-dict `((,setting-to-change . ,new-value)))
+	   (setting-dict-to-send `(("setting_change" . ,setting-dict)))
+	   )
+	;; (message "%s" setting-dict-to-send)
+	(obvz-send-to-python (json-encode setting-dict-to-send))
+	))
+			      
+
+	;;   (setting-dict `(("font_size" . ,(read-number "new font size: ")))))
+
 
 (defun obvz-run-cypher-query(qry)
     "run some cypher query"

@@ -359,9 +359,9 @@ class obvz_window(QtWidgets.QWidget):
                 self.layout_type = new_graph_dict['layout_type']
                 update_me = 1
         
-        if list(new_graph_dict.keys())[0] == "font_size":
+        if list(new_graph_dict.keys())[0] == "setting_change":
             # self.font_size = new_graph_dict['font_size']
-            self.change_settings(new_graph_dict)
+            self.change_settings(new_graph_dict['setting_change'])
             self.update_visuals()
             update_me = 1
             # update_texts = 1
