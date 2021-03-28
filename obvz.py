@@ -1,4 +1,4 @@
-#!/usr/bin/python3.8
+#!/usr/bin/python3.9
 
 import time
 
@@ -281,11 +281,24 @@ class obvz_window(QtWidgets.QWidget):
             
         setattr(self, setting_to_change, new_value)
         
-    def neo4j_query(self):
-        qry ="""MATCH (t1:tag)-[:CONCERNS]->(w:work)<-[:CONCERNS]-(t2:tag)
-        WHERE t1.name >= t2.name
-        RETURN DISTINCT t1.name, t2.name, count(w) as count
-        ORDER BY count DESC LIMIT 200;"""
+    def cypher_query(self):
+        """run cypher query against the neo4j database""" 
+        
+
+        # qry ="""MATCH (t1:tag)-[:CONCERNS]->(w:work)<-[:CONCERNS]-(t2:tag)
+        # WHERE t1.name >= t2.name
+        # RETURN DISTINCT t1.name, t2.name, count(w) as count
+        # ORDER BY count DESC LIMIT 200;"""
+
+        qry = """match (col) where col.name in ["career", "cls_papers", "cls_toread", "sbcls_A", "sbcls_B", "sbcls_C", "sbcls_D", "sbcls_E"]
+        with collect(col) as cl
+        match (n {name:"career"})-[:bc]->(p)
+        with n,p,cl
+        match (f1)<-[:bp]-(p)-[:bp]->(f2) where not f1 in cl and not f2 in cl
+        with f1, f2, collect(p) as pname, count(p) as cnt
+        WHERE cnt > 2 and f1.name > f2.name
+        return f1.name, f2.name"""
+
 
         from neo4j import GraphDatabase
         
@@ -294,8 +307,8 @@ class obvz_window(QtWidgets.QWidget):
 
         res=segs.run(qry).data()
 
-        links = [x['t1.name'] + " -- " + x['t2.name'] for x in res]
-        nodes = np.unique([item for sublist in [(x['t1.name'],  x['t2.name']) for x in res] for item in sublist]).tolist()
+        links = [x['f1.name'] + " -- " + x['f2.name'] for x in res]
+        nodes = np.unique([item for sublist in [(x['f1.name'],  x['f2.name']) for x in res] for item in sublist]).tolist()
 
         return {'links': links, 'nodes': nodes}
         
@@ -364,7 +377,7 @@ class obvz_window(QtWidgets.QWidget):
 
         # run neo4j query
         if list(new_graph_dict.keys())[0] == 'neo4j':
-            neo4j_res=self.neo4j_query()
+            neo4j_res=self.cypher_query()
             self.update_graph(neo4j_res['links'], neo4j_res['nodes'])
 
             node_texts_temp = {}
