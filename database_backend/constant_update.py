@@ -37,7 +37,7 @@ class obvz_window(QtWidgets.QWidget):
         logging.info('receiving')
         # print(string_received)
         content = json.loads(string_received)
-        print(content)
+        # print(content)
 
         # edge separate edge_list for each link type
 
@@ -95,8 +95,9 @@ class obvz_window(QtWidgets.QWidget):
 
         # first del query to clear up
         del_query = """UNWIND $nodes as node
-        match (f:tag {name: node.name})-[r:""" + rel_type + """]->(n) delete r
+        match (f {name: node.name})-[r:""" + rel_type + """]->(n) delete r
         """
+        print(del_query)
 
         edge_params = {'pairs': [{'node1': i[0], 'node2': i[1]} for i in edge_list]}
 
